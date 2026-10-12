@@ -5,11 +5,13 @@ export type AccountType = 'Student' | 'Lecturer'
 interface RegisterPageProps {
   onBackToDashboard: () => void
   onNavigateToLogin: () => void
+  onNavigateToStatus?: () => void
 }
 
 export default function RegisterPage({
   onBackToDashboard,
   onNavigateToLogin,
+  onNavigateToStatus,
 }: RegisterPageProps) {
   const [accountType, setAccountType] = useState<AccountType>('Student')
   const [fullName, setFullName] = useState('')
@@ -441,16 +443,30 @@ export default function RegisterPage({
               </button>
             </form>
 
-            {/* Back to Login Link */}
-            <div className="mt-6 text-center text-xs text-slate-600 border-t border-slate-100 pt-4">
-              Already have an approved account?{' '}
-              <button
-                type="button"
-                onClick={onNavigateToLogin}
-                className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
-              >
-                Sign in here
-              </button>
+            {/* Bottom Links */}
+            <div className="mt-6 text-center text-xs text-slate-600 border-t border-slate-100 pt-4 space-y-2">
+              <div>
+                Already have an approved account?{' '}
+                <button
+                  type="button"
+                  onClick={onNavigateToLogin}
+                  className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+                >
+                  Sign in here
+                </button>
+              </div>
+              {onNavigateToStatus && (
+                <div>
+                  Already submitted a request?{' '}
+                  <button
+                    type="button"
+                    onClick={onNavigateToStatus}
+                    className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+                  >
+                    Check request status
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
