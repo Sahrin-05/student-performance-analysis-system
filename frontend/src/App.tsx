@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import LoginPage from './LoginPage'
 
 export default function App() {
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'login'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navLinks = [
@@ -11,7 +13,8 @@ export default function App() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       ),
-      active: true,
+      active: currentPage === 'dashboard',
+      action: () => setCurrentPage('dashboard'),
     },
     {
       name: 'Courses & Subjects',
@@ -61,6 +64,10 @@ export default function App() {
     },
   ]
 
+  if (currentPage === 'login') {
+    return <LoginPage onBackToDashboard={() => setCurrentPage('dashboard')} />
+  }
+
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 antialiased font-sans overflow-hidden">
       {/* Mobile Sidebar Backdrop */}
@@ -106,11 +113,16 @@ export default function App() {
             Menu
           </div>
           {navLinks.map((item) => (
-            <a
+            <button
               key={item.name}
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              type="button"
+              onClick={() => {
+                if (item.action) {
+                  item.action()
+                }
+                setSidebarOpen(false)
+              }}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left ${
                 item.active
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -118,8 +130,28 @@ export default function App() {
             >
               {item.icon}
               <span>{item.name}</span>
-            </a>
+            </button>
           ))}
+
+          {/* Direct Link to Login in Sidebar */}
+          <div className="pt-4 border-t border-slate-800">
+            <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+              Authentication
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentPage('login')
+                setSidebarOpen(false)
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors text-left"
+            >
+              <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              <span>Go to Sign In</span>
+            </button>
+          </div>
         </nav>
 
         {/* Footer Role Indicator */}
@@ -159,16 +191,26 @@ export default function App() {
             </div>
           </div>
 
-          {/* Top Right Profile Placeholder */}
+          {/* Top Right Profile & Login CTA */}
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage('login')}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              Sign In
+            </button>
             <div className="hidden text-right md:block">
-              <p className="text-xs font-semibold text-slate-800">John Doe</p>
-              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 border border-blue-200">
-                Teacher / Admin Role
+              <p className="text-xs font-semibold text-slate-800">Demo User</p>
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200">
+                Visitor Preview
               </span>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white shadow-xs">
-              JD
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-white shadow-xs">
+              DU
             </div>
           </div>
         </header>
@@ -188,6 +230,18 @@ export default function App() {
                 <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
                   A comprehensive university web platform designed to monitor academic progress, evaluate assessment metrics, and identify students who may require academic intervention. The system provides role-based visibility for administrators, instructors, and students to track learning outcomes over time.
                 </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage('login')}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                  >
+                    Open Login Portal
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </section>
 
