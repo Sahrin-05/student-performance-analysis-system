@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import LoginPage from './LoginPage'
+import RegisterPage from './RegisterPage'
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'login'>('dashboard')
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navLinks = [
@@ -65,7 +66,21 @@ export default function App() {
   ]
 
   if (currentPage === 'login') {
-    return <LoginPage onBackToDashboard={() => setCurrentPage('dashboard')} />
+    return (
+      <LoginPage
+        onBackToDashboard={() => setCurrentPage('dashboard')}
+        onNavigateToRegister={() => setCurrentPage('register')}
+      />
+    )
+  }
+
+  if (currentPage === 'register') {
+    return (
+      <RegisterPage
+        onBackToDashboard={() => setCurrentPage('dashboard')}
+        onNavigateToLogin={() => setCurrentPage('login')}
+      />
+    )
   }
 
   return (

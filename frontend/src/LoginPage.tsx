@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 
 interface LoginPageProps {
   onBackToDashboard: () => void
+  onNavigateToRegister?: () => void
 }
 
-export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
+export default function LoginPage({ onBackToDashboard, onNavigateToRegister }: LoginPageProps) {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -218,6 +219,20 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
                 Sign In
               </button>
             </form>
+
+            {/* Request Account Navigation */}
+            {onNavigateToRegister && (
+              <div className="mt-5 text-center text-xs text-slate-600 border-t border-slate-100 pt-4">
+                Don't have an account yet?{' '}
+                <button
+                  type="button"
+                  onClick={onNavigateToRegister}
+                  className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+                >
+                  Request an account
+                </button>
+              </div>
+            )}
 
             {/* Note on Security and Backend Development */}
             <div className="mt-6 rounded-lg bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-500 leading-relaxed">
