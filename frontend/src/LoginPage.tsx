@@ -1,14 +1,10 @@
 import React, { useState } from 'react'
 
-export type UserRole = 'Student' | 'Lecturer' | 'Admin'
-
 interface LoginPageProps {
   onBackToDashboard: () => void
-  onLoginSuccess?: (role: UserRole) => void
 }
 
 export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
-  const [selectedRole, setSelectedRole] = useState<UserRole>('Student')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -16,28 +12,6 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
 
   // Validation state
   const [errors, setErrors] = useState<{ identifier?: string; password?: string }>({})
-  const [submittedRole, setSubmittedRole] = useState<UserRole | null>(null)
-
-  const roles: { id: UserRole; title: string; desc: string; badge: string }[] = [
-    {
-      id: 'Student',
-      title: 'Student',
-      desc: 'Access grades, progress & reports',
-      badge: 'STU',
-    },
-    {
-      id: 'Lecturer',
-      title: 'Lecturer',
-      desc: 'Enter marks & review class insights',
-      badge: 'LEC',
-    },
-    {
-      id: 'Admin',
-      title: 'Admin',
-      desc: 'Manage users, courses & system setup',
-      badge: 'ADM',
-    },
-  ]
 
   const validate = (): boolean => {
     const newErrors: { identifier?: string; password?: string } = {}
@@ -62,7 +36,8 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (validate()) {
-      setSubmittedRole(selectedRole)
+      // Basic client-side validation passes.
+      // Backend authentication will be handled during Spring Boot development.
     }
   }
 
@@ -107,63 +82,7 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
                 Sign in to SPAS
               </h2>
               <p className="mt-1 text-xs text-slate-600">
-                Choose your role and enter your institutional credentials.
-              </p>
-            </div>
-
-            {/* Client-Side Submission Banner */}
-            {submittedRole && (
-              <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800">
-                <div className="flex items-center gap-2 font-semibold">
-                  <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Client Validation Passed
-                </div>
-                <p className="mt-1 text-emerald-700">
-                  Form submitted for <strong className="font-semibold">{submittedRole}</strong> role. Ready for backend authentication integration.
-                </p>
-              </div>
-            )}
-
-            {/* Role Selection Tabs */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-700 mb-2">
-                Select Your Role
-              </label>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Account Role Selection">
-                {roles.map((role) => {
-                  const isSelected = selectedRole === role.id
-                  return (
-                    <button
-                      key={role.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => {
-                        setSelectedRole(role.id)
-                        setSubmittedRole(null)
-                      }}
-                      className={`flex flex-col items-center justify-center rounded-xl p-2.5 text-center transition-all border ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50/70 text-blue-900 shadow-xs ring-1 ring-blue-600'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {role.badge}
-                      </span>
-                      <span className="mt-1 text-xs font-semibold">{role.title}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="mt-1.5 text-[11px] text-slate-500 text-center">
-                {roles.find((r) => r.id === selectedRole)?.desc}
+                Enter your institutional credentials to access your account.
               </p>
             </div>
 
@@ -175,7 +94,7 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
                   htmlFor="identifier"
                   className="block text-xs font-semibold text-slate-700 mb-1"
                 >
-                  {selectedRole === 'Student' ? 'Student ID or Email' : 'Institutional Email or Username'}
+                  Email or Username
                 </label>
                 <div className="relative">
                   <input
@@ -190,13 +109,7 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
                         setErrors((prev) => ({ ...prev, identifier: undefined }))
                       }
                     }}
-                    placeholder={
-                      selectedRole === 'Student'
-                        ? 'e.g. stu202401 or student@uni.edu'
-                        : selectedRole === 'Lecturer'
-                        ? 'e.g. prof.smith or lecturer@uni.edu'
-                        : 'e.g. admin or admin@uni.edu'
-                    }
+                    placeholder="Enter your institutional email or username"
                     className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden transition-colors ${
                       errors.identifier
                         ? 'border-rose-400 bg-rose-50/30 focus:border-rose-600 focus:ring-1 focus:ring-rose-600'
@@ -297,18 +210,18 @@ export default function LoginPage({ onBackToDashboard }: LoginPageProps) {
                 </label>
               </div>
 
-              {/* Login Button */}
+              {/* Sign In Button */}
               <button
                 type="submit"
                 className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-colors"
               >
-                Sign In as {selectedRole}
+                Sign In
               </button>
             </form>
 
             {/* Note on Security and Backend Development */}
             <div className="mt-6 rounded-lg bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-500 leading-relaxed">
-              <span className="font-semibold text-slate-700">Notice:</span> Backend JWT authentication and role authorization will be implemented in the Spring Boot phase.
+              <span className="font-semibold text-slate-700">Notice:</span> Backend authentication and role-based authorization will be handled securely by the Spring Boot service.
             </div>
           </div>
         </div>
