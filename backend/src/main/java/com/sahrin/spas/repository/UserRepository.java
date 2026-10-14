@@ -1,5 +1,6 @@
 package com.sahrin.spas.repository;
 
+import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -16,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByIdentifier(String identifier);
+
+    boolean existsByRole(Role role);
 }

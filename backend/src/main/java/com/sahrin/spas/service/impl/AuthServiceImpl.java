@@ -121,6 +121,12 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
+        if (user.getStatus() == UserStatus.REJECTED) {
+            throw new AccountStatusException(
+                    "Your account request has been rejected by an administrator. Please contact faculty administration for assistance."
+            );
+        }
+
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new AccountStatusException("Your account is not active. Please contact administrator.");
         }

@@ -8,6 +8,7 @@ import com.sahrin.spas.dto.RegisterResponse;
 import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User.UserStatus;
 import com.sahrin.spas.exception.AccountPendingApprovalException;
+import com.sahrin.spas.exception.AccountStatusException;
 import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.GlobalExceptionHandler;
 import com.sahrin.spas.exception.InvalidCredentialsException;
@@ -320,5 +321,26 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.errors.password").value("Password is required"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login with rejected account should return 403 Forbidden with explanation")
+    void login_rejectedAccount_returns403() throws Exception {
+        String jsonPayload = """
+            {
+                "identifierOrEmail": "rejected.student@university.edu",
+                "password": "Password123!"
+            }
+            """;
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new AccountStatusException("Your account request has been rejected by an administrator. Please contact faculty administration for assistance."));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.message").value("Your account request has been rejected by an administrator. Please contact faculty administration for assistance."));
     }
 }

@@ -320,4 +320,29 @@ class AuthServiceTest {
 
         assertEquals("Your account request is currently pending administrator approval. Please wait until your registration is approved.", exception.getMessage());
     }
+
+    @Test
+    @DisplayName("Should throw AccountStatusException when account status is REJECTED")
+    void login_rejectedStatus_throwsAccountStatusException() {
+        User rejectedUser = new User(
+                "Jane Doe",
+                "STU-2026-001",
+                "jane.doe@student.university.edu",
+                "$2a$10$encodedHash",
+                Role.STUDENT,
+                UserStatus.REJECTED
+        );
+
+        when(userRepository.findByEmail("jane.doe@student.university.edu")).thenReturn(Optional.of(rejectedUser));
+        when(passwordEncoder.matches("Password123!", "$2a$10$encodedHash")).thenReturn(true);
+
+        LoginRequest request = new LoginRequest("jane.doe@student.university.edu", "Password123!");
+
+        AccountStatusException exception = assertThrows(
+                AccountStatusException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("Your account request has been rejected by an administrator. Please contact faculty administration for assistance.", exception.getMessage());
+    }
 }
