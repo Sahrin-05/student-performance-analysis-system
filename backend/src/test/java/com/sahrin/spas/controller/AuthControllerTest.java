@@ -13,7 +13,9 @@ import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.GlobalExceptionHandler;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
+import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.AuthService;
+import com.sahrin.spas.service.JwtService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,12 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
     @DisplayName("POST /api/auth/register with valid Student should return 201 Created and safe response")
