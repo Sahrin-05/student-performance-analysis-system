@@ -44,6 +44,9 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JwtService jwtService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -200,7 +203,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Should successfully authenticate user with email and return LoginResponse")
+    @DisplayName("Should successfully authenticate user with email, issue JWT, and return LoginResponse")
     void login_success_withEmail() {
         User activeUser = new User(
                 "Jane Doe",
@@ -214,6 +217,7 @@ class AuthServiceTest {
 
         when(userRepository.findByEmail("jane.doe@student.university.edu")).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches("Password123!", "$2a$10$encodedHash")).thenReturn(true);
+        when(jwtService.generateToken(10L, "jane.doe@student.university.edu", "STUDENT")).thenReturn("mocked.jwt.token");
 
         LoginRequest request = new LoginRequest("jane.doe@student.university.edu", "Password123!");
         LoginResponse response = authService.login(request);
@@ -226,10 +230,13 @@ class AuthServiceTest {
         assertEquals(Role.STUDENT, response.getRole());
         assertEquals(UserStatus.ACTIVE, response.getStatus());
         assertEquals("Login successful.", response.getMessage());
+        assertEquals("mocked.jwt.token", response.getToken());
+        assertEquals("Bearer", response.getTokenType());
+        verify(jwtService).generateToken(10L, "jane.doe@student.university.edu", "STUDENT");
     }
 
     @Test
-    @DisplayName("Should successfully authenticate user with student identifier and return LoginResponse")
+    @DisplayName("Should successfully authenticate user with student identifier, issue JWT, and return LoginResponse")
     void login_success_withIdentifier() {
         User activeUser = new User(
                 "Jane Doe",
@@ -244,6 +251,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("stu-2026-001")).thenReturn(Optional.empty());
         when(userRepository.findByIdentifier("STU-2026-001")).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches("Password123!", "$2a$10$encodedHash")).thenReturn(true);
+        when(jwtService.generateToken(10L, "jane.doe@student.university.edu", "STUDENT")).thenReturn("mocked.jwt.token");
 
         LoginRequest request = new LoginRequest("STU-2026-001", "Password123!");
         LoginResponse response = authService.login(request);
@@ -253,10 +261,13 @@ class AuthServiceTest {
         assertEquals("Jane Doe", response.getFullName());
         assertEquals(Role.STUDENT, response.getRole());
         assertEquals(UserStatus.ACTIVE, response.getStatus());
+        assertEquals("mocked.jwt.token", response.getToken());
+        assertEquals("Bearer", response.getTokenType());
+        verify(jwtService).generateToken(10L, "jane.doe@student.university.edu", "STUDENT");
     }
 
     @Test
-    @DisplayName("Should throw InvalidCredentialsException with safe generic message when user does not exist")
+    @DisplayName("Should throw InvalidCredentialsException and not issue token when user does not exist")
     void login_userNotFound_throwsInvalidCredentialsException() {
         when(userRepository.findByEmail("nonexistent@university.edu")).thenReturn(Optional.empty());
         when(userRepository.findByIdentifier("nonexistent@university.edu")).thenReturn(Optional.empty());
@@ -269,10 +280,11 @@ class AuthServiceTest {
         );
 
         assertEquals("Invalid email/identifier or password.", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Should throw InvalidCredentialsException with safe generic message when password is wrong")
+    @DisplayName("Should throw InvalidCredentialsException and not issue token when password is wrong")
     void login_wrongPassword_throwsInvalidCredentialsException() {
         User activeUser = new User(
                 "Jane Doe",
@@ -294,10 +306,11 @@ class AuthServiceTest {
         );
 
         assertEquals("Invalid email/identifier or password.", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Should throw AccountPendingApprovalException when account status is PENDING_APPROVAL")
+    @DisplayName("Should throw AccountPendingApprovalException and not issue token when account status is PENDING_APPROVAL")
     void login_pendingApproval_throwsAccountPendingApprovalException() {
         User pendingUser = new User(
                 "Jane Doe",
@@ -319,10 +332,11 @@ class AuthServiceTest {
         );
 
         assertEquals("Your account request is currently pending administrator approval. Please wait until your registration is approved.", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Should throw AccountStatusException when account status is REJECTED")
+    @DisplayName("Should throw AccountStatusException and not issue token when account status is REJECTED")
     void login_rejectedStatus_throwsAccountStatusException() {
         User rejectedUser = new User(
                 "Jane Doe",
@@ -344,5 +358,6 @@ class AuthServiceTest {
         );
 
         assertEquals("Your account request has been rejected by an administrator. Please contact faculty administration for assistance.", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(), any(), any());
     }
 }

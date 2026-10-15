@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { loginUser, type LoginResponseData, type ApiErrorData } from './services/authService'
+import { loginUser, saveAuthSession, type LoginResponseData, type ApiErrorData } from './services/authService'
 
 interface LoginPageProps {
   onBackToDashboard: () => void
@@ -66,6 +66,8 @@ export default function LoginPage({
         identifierOrEmail: identifier.trim(),
         password,
       })
+
+      saveAuthSession(response, rememberMe)
 
       setSuccessMessage(`Welcome back, ${response.fullName}! Redirecting to your ${response.role.toLowerCase()} dashboard...`)
       setPassword('')

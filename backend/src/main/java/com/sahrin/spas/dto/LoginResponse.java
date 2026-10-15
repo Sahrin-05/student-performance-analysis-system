@@ -12,11 +12,17 @@ public class LoginResponse {
     private Role role;
     private UserStatus status;
     private String message;
+    private String token;
+    private String tokenType;
 
     public LoginResponse() {
     }
 
     public LoginResponse(Long id, String fullName, String identifier, String email, Role role, UserStatus status, String message) {
+        this(id, fullName, identifier, email, role, status, message, null, null);
+    }
+
+    public LoginResponse(Long id, String fullName, String identifier, String email, Role role, UserStatus status, String message, String token, String tokenType) {
         this.id = id;
         this.fullName = fullName;
         this.identifier = identifier;
@@ -24,6 +30,8 @@ public class LoginResponse {
         this.role = role;
         this.status = status;
         this.message = message;
+        this.token = token;
+        this.tokenType = tokenType;
     }
 
     public Long getId() {
@@ -80,5 +88,21 @@ public class LoginResponse {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getTokenType() {
+        return tokenType;
+    }
+
+    public void setTokenType(String tokenType) {
+        this.tokenType = tokenType;
     }
 }

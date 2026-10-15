@@ -228,7 +228,9 @@ class AuthControllerTest {
                 "jane.doe@student.university.edu",
                 Role.STUDENT,
                 UserStatus.ACTIVE,
-                "Login successful."
+                "Login successful.",
+                "sample.jwt.token",
+                "Bearer"
         );
 
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
@@ -251,6 +253,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.role").value("STUDENT"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.message").value("Login successful."))
+                .andExpect(jsonPath("$.token").value("sample.jwt.token"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
     }

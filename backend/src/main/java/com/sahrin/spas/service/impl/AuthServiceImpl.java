@@ -14,6 +14,7 @@ import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.AuthService;
+import com.sahrin.spas.service.JwtService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,10 +31,12 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -139,7 +142,10 @@ public class AuthServiceImpl implements AuthService {
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 6. Return safe authenticated user details (no password or hash)
+        // 6. Generate JWT token for the authenticated active user
+        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+
+        // 7. Return safe authenticated user details and token (no password or hash)
         return new LoginResponse(
                 user.getId(),
                 user.getFullName(),
@@ -147,7 +153,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole(),
                 user.getStatus(),
-                "Login successful."
+                "Login successful.",
+                token,
+                "Bearer"
         );
     }
 }

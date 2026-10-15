@@ -1,13 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import RequestStatusPage from './RequestStatusPage'
-import type { LoginResponseData } from './services/authService'
+import {
+  getStoredAuthSession,
+  clearAuthSession,
+  onUnauthorized,
+  type LoginResponseData,
+} from './services/authService'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
-  const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(null)
+  const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Listen for 401 Unauthorized events from authenticatedFetch
+  useEffect(() => {
+    const unsubscribe = onUnauthorized(() => {
+      setCurrentUser(null)
+      setCurrentPage('login')
+    })
+    return unsubscribe
+  }, [])
+
+  const handleSignOut = () => {
+    clearAuthSession()
+    setCurrentUser(null)
+    setSidebarOpen(false)
+    setCurrentPage('dashboard')
+  }
 
   // 1. Login View
   if (currentPage === 'login') {
@@ -345,10 +366,7 @@ export default function App() {
           <div className="pt-4 border-t border-slate-800">
             <button
               type="button"
-              onClick={() => {
-                setCurrentUser(null)
-                setSidebarOpen(false)
-              }}
+              onClick={handleSignOut}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-300 hover:bg-slate-800 hover:text-rose-200 transition-colors text-left"
             >
               <svg className="h-5 w-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -423,7 +441,7 @@ export default function App() {
             </div>
             <button
               type="button"
-              onClick={() => setCurrentUser(null)}
+              onClick={handleSignOut}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs"
             >
               Sign Out
