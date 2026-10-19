@@ -6,7 +6,7 @@ export type AccountType = 'Student' | 'Lecturer'
 interface RegisterPageProps {
   onBackToDashboard: () => void
   onNavigateToLogin: () => void
-  onNavigateToStatus?: () => void
+  onNavigateToStatus?: (identifier?: string, email?: string) => void
 }
 
 export default function RegisterPage({
@@ -244,10 +244,10 @@ export default function RegisterPage({
                   {onNavigateToStatus && (
                     <button
                       type="button"
-                      onClick={onNavigateToStatus}
+                      onClick={() => onNavigateToStatus(successResponse.identifier, successResponse.email)}
                       className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                      Check Status Guidance
+                      Track Application Status
                     </button>
                   )}
                   <button
@@ -639,7 +639,7 @@ export default function RegisterPage({
                       Want to check how verification works?{' '}
                       <button
                         type="button"
-                        onClick={onNavigateToStatus}
+                        onClick={() => onNavigateToStatus()}
                         className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
                       >
                         View approval status guidance

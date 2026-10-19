@@ -4,6 +4,8 @@ import com.sahrin.spas.dto.LoginRequest;
 import com.sahrin.spas.dto.LoginResponse;
 import com.sahrin.spas.dto.RegisterRequest;
 import com.sahrin.spas.dto.RegisterResponse;
+import com.sahrin.spas.dto.StatusCheckRequest;
+import com.sahrin.spas.dto.StatusCheckResponse;
 import com.sahrin.spas.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/status")
+    public ResponseEntity<StatusCheckResponse> checkStatus(@Valid @RequestBody StatusCheckRequest request) {
+        StatusCheckResponse response = authService.checkStatus(request);
         return ResponseEntity.ok(response);
     }
 }

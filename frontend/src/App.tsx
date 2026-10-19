@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import RequestStatusPage from './RequestStatusPage'
+import AdminApprovalsQueue from './AdminApprovalsQueue'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -12,12 +13,15 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
+  const [adminView, setAdminView] = useState<'overview' | 'approvals'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
 
   // Listen for 401 Unauthorized events from authenticatedFetch
   useEffect(() => {
     const unsubscribe = onUnauthorized(() => {
       setCurrentUser(null)
+      setAdminView('overview')
       setCurrentPage('login')
     })
     return unsubscribe
@@ -26,6 +30,7 @@ export default function App() {
   const handleSignOut = () => {
     clearAuthSession()
     setCurrentUser(null)
+    setAdminView('overview')
     setSidebarOpen(false)
     setCurrentPage('dashboard')
   }
@@ -36,9 +41,13 @@ export default function App() {
       <LoginPage
         onBackToDashboard={() => setCurrentPage('dashboard')}
         onNavigateToRegister={() => setCurrentPage('register')}
-        onNavigateToStatus={() => setCurrentPage('status')}
+        onNavigateToStatus={() => {
+          setStatusPrefill(null)
+          setCurrentPage('status')
+        }}
         onLoginSuccess={(user) => {
           setCurrentUser(user)
+          setAdminView('overview')
           setCurrentPage('dashboard')
         }}
       />
@@ -51,7 +60,14 @@ export default function App() {
       <RegisterPage
         onBackToDashboard={() => setCurrentPage('dashboard')}
         onNavigateToLogin={() => setCurrentPage('login')}
-        onNavigateToStatus={() => setCurrentPage('status')}
+        onNavigateToStatus={(id, em) => {
+          if (id && em) {
+            setStatusPrefill({ identifier: id, email: em })
+          } else {
+            setStatusPrefill(null)
+          }
+          setCurrentPage('status')
+        }}
       />
     )
   }
@@ -63,6 +79,8 @@ export default function App() {
         onBackToDashboard={() => setCurrentPage('dashboard')}
         onNavigateToLogin={() => setCurrentPage('login')}
         onNavigateToRegister={() => setCurrentPage('register')}
+        initialIdentifier={statusPrefill?.identifier}
+        initialEmail={statusPrefill?.email}
       />
     )
   }
@@ -273,7 +291,11 @@ export default function App() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       ),
-      active: true,
+      active: currentUser.role === 'ADMIN' ? adminView === 'overview' : true,
+      onClick: currentUser.role === 'ADMIN' ? () => {
+        setAdminView('overview')
+        setSidebarOpen(false)
+      } : undefined,
     },
     {
       name: currentUser.role === 'ADMIN' ? 'User Approvals Queue' : 'Courses & Subjects',
@@ -282,7 +304,11 @@ export default function App() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       ),
-      active: false,
+      active: currentUser.role === 'ADMIN' ? adminView === 'approvals' : false,
+      onClick: currentUser.role === 'ADMIN' ? () => {
+        setAdminView('approvals')
+        setSidebarOpen(false)
+      } : undefined,
     },
     {
       name: currentUser.role === 'ADMIN' ? 'System Audit Trail' : 'Grades & Marks',
@@ -348,19 +374,36 @@ export default function App() {
           <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
             {currentUser.role} Navigation
           </div>
-          {navLinks.map((item) => (
-            <div
-              key={item.name}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left ${
-                item.active
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-default'
-              }`}
-            >
-              {item.icon}
-              <span>{item.name}</span>
-            </div>
-          ))}
+          {navLinks.map((item) => {
+            const isClickable = Boolean(item.onClick)
+            return isClickable ? (
+              <button
+                key={item.name}
+                type="button"
+                onClick={item.onClick}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left cursor-pointer ${
+                  item.active
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </button>
+            ) : (
+              <div
+                key={item.name}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left ${
+                  item.active
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-500 opacity-60 cursor-default'
+                }`}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </div>
+            )
+          })}
 
           {/* Sign Out Link in Sidebar */}
           <div className="pt-4 border-t border-slate-800">
@@ -414,7 +457,7 @@ export default function App() {
             </button>
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {currentUser.role === 'ADMIN' && 'Administrator Management Center'}
+                {currentUser.role === 'ADMIN' && (adminView === 'approvals' ? 'User Approvals & Account Authorization' : 'Administrator Management Center')}
                 {currentUser.role === 'LECTURER' && 'Faculty Instruction & Grading Portal'}
                 {currentUser.role === 'STUDENT' && 'Student Academic Progress Portal'}
               </h2>
@@ -454,63 +497,71 @@ export default function App() {
           <div className="mx-auto max-w-5xl space-y-6">
             {/* ADMIN DASHBOARD VIEW */}
             {currentUser.role === 'ADMIN' && (
-              <>
-                <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
-                  <div className="max-w-3xl space-y-2">
-                    <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 border border-purple-200">
-                      System Governance
-                    </span>
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">
-                      Welcome, Administrator {currentUser.fullName}
-                    </h3>
-                    <p className="text-xs leading-relaxed text-slate-600">
-                      Manage system users, review applicant onboarding requests, and oversee academic analytics security.
-                    </p>
-                  </div>
-                </section>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">PostgreSQL Database</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Connected</h4>
-                    <p className="text-[11px] text-emerald-600 mt-1">● spas_db Active</p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Approval Workflow</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Queue Ready</h4>
-                    <p className="text-[11px] text-blue-600 mt-1">Stage 2 API integration</p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Security Policy</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Stateless</h4>
-                    <p className="text-[11px] text-slate-600 mt-1">BCrypt Encryption</p>
-                  </div>
-                </div>
-
-                {/* Planned Admin Approval Section */}
-                <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900">Pending Registrations Approval Queue</h4>
-                      <p className="text-xs text-slate-500">Student and Lecturer applicants awaiting administrative authorization</p>
+              adminView === 'approvals' ? (
+                <AdminApprovalsQueue onBackToOverview={() => setAdminView('overview')} />
+              ) : (
+                <>
+                  <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
+                    <div className="max-w-3xl space-y-2">
+                      <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 border border-purple-200">
+                        System Governance
+                      </span>
+                      <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+                        Welcome, Administrator {currentUser.fullName}
+                      </h3>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        Manage system users, review applicant onboarding requests, and oversee academic analytics security.
+                      </p>
                     </div>
-                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 border border-amber-200">
-                      Stage 2 Module
-                    </span>
+                  </section>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">PostgreSQL Database</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Connected</h4>
+                      <p className="text-[11px] text-emerald-600 mt-1">● spas_db Active</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Approval Workflow</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Queue Ready</h4>
+                      <p className="text-[11px] text-emerald-600 mt-1">● Live Backend API Connected</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Security Policy</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Stateless</h4>
+                      <p className="text-[11px] text-slate-600 mt-1">BCrypt Encryption</p>
+                    </div>
                   </div>
 
-                  <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-2 leading-relaxed">
-                    <p>
-                      <strong>Architecture Notice:</strong> The Admin Approval table will connect to <code className="text-blue-700 bg-blue-50 px-1 py-0.5 rounded text-[11px]">GET /api/admin/users/pending</code> and permit one-click <code className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded text-[11px]">Approve</code> or <code className="text-rose-700 bg-rose-50 px-1 py-0.5 rounded text-[11px]">Reject</code> actions in Stage 2.
-                    </p>
-                    <p className="text-slate-500 text-[11px]">
-                      No mock approvals or fabricated records are rendered here to preserve truthful database fidelity.
-                    </p>
-                  </div>
-                </section>
-              </>
+                  {/* Admin Approval Section */}
+                  <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Pending Registrations Approval Queue</h4>
+                        <p className="text-xs text-slate-500">Student and Lecturer applicants awaiting administrative authorization</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('approvals')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Approvals Queue</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-2 leading-relaxed">
+                      <p>
+                        Review incoming student and lecturer registration requests. Authorize accounts to allow sign-in, or reject unverified applicants with a permanent rejection record.
+                      </p>
+                    </div>
+                  </section>
+                </>
+              )
             )}
 
             {/* LECTURER DASHBOARD VIEW */}

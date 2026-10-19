@@ -9,6 +9,7 @@ public class ApiErrorResponse {
     private String message;
     private Instant timestamp;
     private Map<String, String> errors;
+    private String errorCode;
 
     public ApiErrorResponse() {
         this.timestamp = Instant.now();
@@ -17,6 +18,13 @@ public class ApiErrorResponse {
     public ApiErrorResponse(int status, String message) {
         this.status = status;
         this.message = message;
+        this.timestamp = Instant.now();
+    }
+
+    public ApiErrorResponse(int status, String message, String errorCode) {
+        this.status = status;
+        this.message = message;
+        this.errorCode = errorCode;
         this.timestamp = Instant.now();
     }
 
@@ -57,5 +65,13 @@ public class ApiErrorResponse {
 
     public void setErrors(Map<String, String> errors) {
         this.errors = errors;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
     }
 }

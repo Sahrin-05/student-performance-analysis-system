@@ -22,9 +22,20 @@ export interface ApiErrorData {
   status?: number;
   message: string;
   errors?: Record<string, string>;
+  errorCode?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export interface StatusCheckPayload {
+  identifier: string;
+  institutionalEmail: string;
+}
+
+export interface StatusCheckResponseData {
+  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED';
+  message: string;
+}
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 /**
  * Sends an account registration request to the Spring Boot backend.
@@ -222,9 +233,45 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponseDat
     const error = new Error(errorMsg) as Error & ApiErrorData;
     error.status = response.status;
     error.errors = data?.errors;
+    error.errorCode = data?.errorCode;
     throw error;
   }
 
   return data as LoginResponseData;
+}
+
+/**
+ * Checks the registration approval status for a student or lecturer account.
+ * Public endpoint; requires both student/staff ID and institutional email.
+ */
+export async function checkUserStatus(payload: StatusCheckPayload): Promise<StatusCheckResponseData> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      'Unable to connect to the backend server. Please verify that the Spring Boot service is running on port 8080.'
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorMsg = data?.message || 'Verification status check could not be completed.';
+    const error = new Error(errorMsg) as Error & ApiErrorData;
+    error.status = response.status;
+    error.errors = data?.errors;
+    error.errorCode = data?.errorCode;
+    throw error;
+  }
+
+  return data as StatusCheckResponseData;
 }
 

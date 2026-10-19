@@ -4,6 +4,8 @@ import com.sahrin.spas.dto.LoginRequest;
 import com.sahrin.spas.dto.LoginResponse;
 import com.sahrin.spas.dto.RegisterRequest;
 import com.sahrin.spas.dto.RegisterResponse;
+import com.sahrin.spas.dto.StatusCheckRequest;
+import com.sahrin.spas.dto.StatusCheckResponse;
 import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User;
 import com.sahrin.spas.entity.User.UserStatus;
@@ -12,6 +14,7 @@ import com.sahrin.spas.exception.AccountStatusException;
 import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
+import com.sahrin.spas.exception.ResourceNotFoundException;
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.AuthService;
 import com.sahrin.spas.service.JwtService;
@@ -157,5 +160,35 @@ public class AuthServiceImpl implements AuthService {
                 token,
                 "Bearer"
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StatusCheckResponse checkStatus(StatusCheckRequest request) {
+        if (request == null || request.getIdentifier() == null || request.getInstitutionalEmail() == null) {
+            throw new ResourceNotFoundException("No registration request found matching the provided identifier and email.");
+        }
+
+        String normalizedIdentifier = request.getIdentifier().trim();
+        String normalizedEmail = request.getInstitutionalEmail().trim().toLowerCase();
+
+        Optional<User> userOptional = userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase(
+                normalizedIdentifier,
+                normalizedEmail
+        );
+
+        if (userOptional.isEmpty() || userOptional.get().getRole() == Role.ADMIN) {
+            throw new ResourceNotFoundException("No registration request found matching the provided identifier and email.");
+        }
+
+        User user = userOptional.get();
+
+        String message = switch (user.getStatus()) {
+            case PENDING_APPROVAL -> "Your account request is currently pending administrator approval.";
+            case ACTIVE -> "Your account has been approved and is active. You may now sign in.";
+            case REJECTED -> "Your account registration request has been rejected. Please contact faculty administration for assistance.";
+        };
+
+        return new StatusCheckResponse(user.getStatus(), message);
     }
 }

@@ -8,7 +8,7 @@ interface LoginPageProps {
   onLoginSuccess?: (user: LoginResponseData) => void
 }
 
-type ErrorCategory = 'pending_approval' | 'invalid_credentials' | 'connection_error' | 'general'
+type ErrorCategory = 'pending_approval' | 'rejected' | 'invalid_credentials' | 'connection_error' | 'general'
 
 export default function LoginPage({
   onBackToDashboard,
@@ -91,12 +91,19 @@ export default function LoginPage({
       setServerError(rawMsg)
 
       if (
-        apiErr.status === 403 ||
+        apiErr.errorCode === 'ACCOUNT_REJECTED' ||
+        rawMsg.toLowerCase().includes('rejected')
+      ) {
+        setErrorCategory('rejected')
+      } else if (
+        apiErr.errorCode === 'ACCOUNT_PENDING_APPROVAL' ||
         rawMsg.toLowerCase().includes('pending administrator approval') ||
+        rawMsg.toLowerCase().includes('pending approval') ||
         rawMsg.toLowerCase().includes('pending')
       ) {
         setErrorCategory('pending_approval')
       } else if (
+        apiErr.errorCode === 'INVALID_CREDENTIALS' ||
         apiErr.status === 401 ||
         rawMsg.toLowerCase().includes('invalid email/identifier or password') ||
         rawMsg.toLowerCase().includes('invalid')
@@ -196,6 +203,38 @@ export default function LoginPage({
                               className="font-semibold text-blue-700 hover:text-blue-800 underline underline-offset-2 inline-flex items-center gap-1"
                             >
                               Check your registration status
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {errorCategory === 'rejected' && (
+                  <div className="mb-5 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-900 shadow-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-200 text-rose-800">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <span className="font-semibold text-rose-950 block">Registration Request Rejected</span>
+                        <p className="text-rose-800 leading-relaxed">
+                          Your account request has been reviewed and declined by an administrator. Please contact faculty administration for assistance.
+                        </p>
+                        {onNavigateToStatus && (
+                          <div className="pt-1.5">
+                            <button
+                              type="button"
+                              onClick={onNavigateToStatus}
+                              className="font-semibold text-rose-800 hover:text-rose-950 underline underline-offset-2 inline-flex items-center gap-1"
+                            >
+                              Check verification details
                               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>

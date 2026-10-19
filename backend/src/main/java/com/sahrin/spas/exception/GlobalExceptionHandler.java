@@ -71,7 +71,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentialsException(InvalidCredentialsException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
-                ex.getMessage()
+                ex.getMessage(),
+                "INVALID_CREDENTIALS"
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
@@ -80,7 +81,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAccountPendingApprovalException(AccountPendingApprovalException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
-                ex.getMessage()
+                ex.getMessage(),
+                "ACCOUNT_PENDING_APPROVAL"
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
@@ -89,7 +91,37 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAccountStatusException(AccountStatusException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
-                ex.getMessage()
+                ex.getMessage(),
+                "ACCOUNT_REJECTED"
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                "RESOURCE_NOT_FOUND"
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidStatusTransitionException(InvalidStatusTransitionException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                "INVALID_STATUS_TRANSITION"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "Access denied: You do not have permission to access this resource."
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }

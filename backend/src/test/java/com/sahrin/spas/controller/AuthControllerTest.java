@@ -5,6 +5,8 @@ import com.sahrin.spas.dto.LoginRequest;
 import com.sahrin.spas.dto.LoginResponse;
 import com.sahrin.spas.dto.RegisterRequest;
 import com.sahrin.spas.dto.RegisterResponse;
+import com.sahrin.spas.dto.StatusCheckRequest;
+import com.sahrin.spas.dto.StatusCheckResponse;
 import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User.UserStatus;
 import com.sahrin.spas.exception.AccountPendingApprovalException;
@@ -13,6 +15,7 @@ import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.GlobalExceptionHandler;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
+import com.sahrin.spas.exception.ResourceNotFoundException;
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.AuthService;
 import com.sahrin.spas.service.JwtService;
@@ -298,6 +301,7 @@ class AuthControllerTest {
                         .content(jsonPayload))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.errorCode").value("ACCOUNT_PENDING_APPROVAL"))
                 .andExpect(jsonPath("$.message").value("Your account request is currently pending administrator approval. Please wait until your registration is approved."));
     }
 
@@ -353,6 +357,125 @@ class AuthControllerTest {
                         .content(jsonPayload))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.errorCode").value("ACCOUNT_REJECTED"))
                 .andExpect(jsonPath("$.message").value("Your account request has been rejected by an administrator. Please contact faculty administration for assistance."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/status with valid pending registration should return 200 OK and safe status")
+    void checkStatus_pending_returns200() throws Exception {
+        StatusCheckResponse response = new StatusCheckResponse(
+                UserStatus.PENDING_APPROVAL,
+                "Your account request is currently pending administrator approval."
+        );
+
+        when(authService.checkStatus(any(StatusCheckRequest.class))).thenReturn(response);
+
+        String jsonPayload = """
+            {
+                "identifier": "STU-2026-001",
+                "institutionalEmail": "jane.doe@student.university.edu"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING_APPROVAL"))
+                .andExpect(jsonPath("$.message").value("Your account request is currently pending administrator approval."))
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.token").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/status with active registration should return 200 OK and ACTIVE status")
+    void checkStatus_active_returns200() throws Exception {
+        StatusCheckResponse response = new StatusCheckResponse(
+                UserStatus.ACTIVE,
+                "Your account has been approved and is active. You may now sign in."
+        );
+
+        when(authService.checkStatus(any(StatusCheckRequest.class))).thenReturn(response);
+
+        String jsonPayload = """
+            {
+                "identifier": "STU-2026-001",
+                "institutionalEmail": "jane.doe@student.university.edu"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.message").value("Your account has been approved and is active. You may now sign in."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/status with rejected registration should return 200 OK and REJECTED status")
+    void checkStatus_rejected_returns200() throws Exception {
+        StatusCheckResponse response = new StatusCheckResponse(
+                UserStatus.REJECTED,
+                "Your account registration request has been rejected. Please contact faculty administration for assistance."
+        );
+
+        when(authService.checkStatus(any(StatusCheckRequest.class))).thenReturn(response);
+
+        String jsonPayload = """
+            {
+                "identifier": "STU-2026-001",
+                "institutionalEmail": "jane.doe@student.university.edu"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.message").value("Your account registration request has been rejected. Please contact faculty administration for assistance."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/status when unknown identifier or mismatched email should return 404 Not Found")
+    void checkStatus_unknownOrMismatched_returns404() throws Exception {
+        when(authService.checkStatus(any(StatusCheckRequest.class)))
+                .thenThrow(new ResourceNotFoundException("No registration request found matching the provided identifier and email."));
+
+        String jsonPayload = """
+            {
+                "identifier": "NON-EXISTENT",
+                "institutionalEmail": "unknown@university.edu"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("No registration request found matching the provided identifier and email."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/status with missing fields should return 400 Bad Request")
+    void checkStatus_missingFields_returns400() throws Exception {
+        String jsonPayload = """
+            {
+                "institutionalEmail": "invalid-email"
+            }
+            """;
+
+        mockMvc.perform(post("/api/auth/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors.identifier").value("Student or Staff ID is required"))
+                .andExpect(jsonPath("$.errors.institutionalEmail").value("Please provide a valid institutional email address"));
     }
 }

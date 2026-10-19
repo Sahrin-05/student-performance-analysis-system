@@ -4,6 +4,8 @@ import com.sahrin.spas.dto.LoginRequest;
 import com.sahrin.spas.dto.LoginResponse;
 import com.sahrin.spas.dto.RegisterRequest;
 import com.sahrin.spas.dto.RegisterResponse;
+import com.sahrin.spas.dto.StatusCheckRequest;
+import com.sahrin.spas.dto.StatusCheckResponse;
 import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User;
 import com.sahrin.spas.entity.User.UserStatus;
@@ -12,6 +14,7 @@ import com.sahrin.spas.exception.AccountStatusException;
 import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
+import com.sahrin.spas.exception.ResourceNotFoundException;
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.impl.AuthServiceImpl;
 import java.util.Optional;
@@ -359,5 +362,126 @@ class AuthServiceTest {
 
         assertEquals("Your account request has been rejected by an administrator. Please contact faculty administration for assistance.", exception.getMessage());
         verify(jwtService, never()).generateToken(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("checkStatus should return PENDING_APPROVAL status when user account is pending")
+    void checkStatus_pending_returnsPendingStatus() {
+        User pendingUser = new User(
+                "Jane Doe",
+                "STU-2026-001",
+                "jane.doe@student.university.edu",
+                "$2a$10$encodedHash",
+                Role.STUDENT,
+                UserStatus.PENDING_APPROVAL
+        );
+
+        when(userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase("STU-2026-001", "jane.doe@student.university.edu"))
+                .thenReturn(Optional.of(pendingUser));
+
+        StatusCheckRequest request = new StatusCheckRequest("STU-2026-001", "jane.doe@student.university.edu");
+        StatusCheckResponse response = authService.checkStatus(request);
+
+        assertNotNull(response);
+        assertEquals(UserStatus.PENDING_APPROVAL, response.getStatus());
+        assertEquals("Your account request is currently pending administrator approval.", response.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkStatus should return ACTIVE status when user account is approved")
+    void checkStatus_active_returnsActiveStatus() {
+        User activeUser = new User(
+                "Jane Doe",
+                "STU-2026-001",
+                "jane.doe@student.university.edu",
+                "$2a$10$encodedHash",
+                Role.STUDENT,
+                UserStatus.ACTIVE
+        );
+
+        when(userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase("STU-2026-001", "jane.doe@student.university.edu"))
+                .thenReturn(Optional.of(activeUser));
+
+        StatusCheckRequest request = new StatusCheckRequest("STU-2026-001", "jane.doe@student.university.edu");
+        StatusCheckResponse response = authService.checkStatus(request);
+
+        assertNotNull(response);
+        assertEquals(UserStatus.ACTIVE, response.getStatus());
+        assertEquals("Your account has been approved and is active. You may now sign in.", response.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkStatus should return REJECTED status when user account is rejected")
+    void checkStatus_rejected_returnsRejectedStatus() {
+        User rejectedUser = new User(
+                "Jane Doe",
+                "STU-2026-001",
+                "jane.doe@student.university.edu",
+                "$2a$10$encodedHash",
+                Role.STUDENT,
+                UserStatus.REJECTED
+        );
+
+        when(userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase("STU-2026-001", "jane.doe@student.university.edu"))
+                .thenReturn(Optional.of(rejectedUser));
+
+        StatusCheckRequest request = new StatusCheckRequest("STU-2026-001", "jane.doe@student.university.edu");
+        StatusCheckResponse response = authService.checkStatus(request);
+
+        assertNotNull(response);
+        assertEquals(UserStatus.REJECTED, response.getStatus());
+        assertEquals("Your account registration request has been rejected. Please contact faculty administration for assistance.", response.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkStatus should throw ResourceNotFoundException when user is not found")
+    void checkStatus_userNotFound_throwsResourceNotFoundException() {
+        when(userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase("UNKNOWN-001", "unknown@university.edu"))
+                .thenReturn(Optional.empty());
+
+        StatusCheckRequest request = new StatusCheckRequest("UNKNOWN-001", "unknown@university.edu");
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> authService.checkStatus(request)
+        );
+
+        assertEquals("No registration request found matching the provided identifier and email.", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkStatus should throw ResourceNotFoundException when user role is ADMIN to prevent admin exposure")
+    void checkStatus_adminUser_throwsResourceNotFoundException() {
+        User adminUser = new User(
+                "Administrator",
+                "ADM-001",
+                "admin@university.edu",
+                "$2a$10$encodedHash",
+                Role.ADMIN,
+                UserStatus.ACTIVE
+        );
+
+        when(userRepository.findByIdentifierIgnoreCaseAndEmailIgnoreCase("ADM-001", "admin@university.edu"))
+                .thenReturn(Optional.of(adminUser));
+
+        StatusCheckRequest request = new StatusCheckRequest("ADM-001", "admin@university.edu");
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> authService.checkStatus(request)
+        );
+
+        assertEquals("No registration request found matching the provided identifier and email.", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("checkStatus should throw ResourceNotFoundException when request has null fields")
+    void checkStatus_nullFields_throwsResourceNotFoundException() {
+        StatusCheckRequest request = new StatusCheckRequest(null, null);
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> authService.checkStatus(request)
+        );
     }
 }

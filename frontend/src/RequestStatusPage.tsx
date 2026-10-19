@@ -1,20 +1,46 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { checkUserStatus, type StatusCheckResponseData, type ApiErrorData } from './services/authService'
 
 interface RequestStatusPageProps {
   onBackToDashboard: () => void
   onNavigateToLogin: () => void
   onNavigateToRegister: () => void
+  initialIdentifier?: string
+  initialEmail?: string
 }
 
 export default function RequestStatusPage({
   onBackToDashboard,
   onNavigateToLogin,
   onNavigateToRegister,
+  initialIdentifier,
+  initialEmail,
 }: RequestStatusPageProps) {
-  const [email, setEmail] = useState('')
-  const [identifier, setIdentifier] = useState('')
-  const [hasChecked, setHasChecked] = useState(false)
+  const [email, setEmail] = useState(initialEmail || '')
+  const [identifier, setIdentifier] = useState(initialIdentifier || '')
+  const [statusResult, setStatusResult] = useState<StatusCheckResponseData | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [queryError, setQueryError] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ email?: string; identifier?: string }>({})
+
+  const isCheckingRef = useRef(false)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // Automatically query status if prefilled credentials were provided from registration
+  useEffect(() => {
+    if (initialIdentifier && initialEmail) {
+      performStatusCheck(initialIdentifier, initialEmail)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialIdentifier, initialEmail])
 
   const validate = (): boolean => {
     const newErrors: { email?: string; identifier?: string } = {}
@@ -36,11 +62,93 @@ export default function RequestStatusPage({
     return Object.keys(newErrors).length === 0
   }
 
+  const performStatusCheck = async (
+    idToCheck: string,
+    emailToCheck: string,
+    isRefresh = false,
+    isBackground = false
+  ) => {
+    if (isCheckingRef.current) return
+    isCheckingRef.current = true
+
+    if (!isBackground) {
+      if (isRefresh) {
+        setIsRefreshing(true)
+      } else {
+        setIsLoading(true)
+      }
+      setQueryError(null)
+    }
+
+    try {
+      const response = await checkUserStatus({
+        identifier: idToCheck.trim(),
+        institutionalEmail: emailToCheck.trim().toLowerCase(),
+      })
+      if (isMountedRef.current) {
+        setStatusResult(response)
+        setQueryError(null)
+      }
+    } catch (err: unknown) {
+      if (isMountedRef.current) {
+        const apiErr = err as Error & ApiErrorData
+        if (!isRefresh && !isBackground) {
+          setStatusResult(null)
+        }
+        if (!isBackground) {
+          setQueryError(
+            apiErr.message || 'Unable to check verification status. Please check your connection and try again.'
+          )
+        }
+      }
+    } finally {
+      isCheckingRef.current = false
+      if (isMountedRef.current) {
+        setIsLoading(false)
+        setIsRefreshing(false)
+      }
+    }
+  }
+
+  const performStatusCheckRef = useRef(performStatusCheck)
+  useEffect(() => {
+    performStatusCheckRef.current = performStatusCheck
+  })
+
+  // Automatically poll every 5 seconds while account is PENDING_APPROVAL
+  useEffect(() => {
+    if (statusResult?.status !== 'PENDING_APPROVAL' || !identifier.trim() || !email.trim()) {
+      return
+    }
+
+    const pollInterval = setInterval(() => {
+      if (identifier.trim() && email.trim() && !isCheckingRef.current) {
+        performStatusCheckRef.current(identifier, email, true, true)
+      }
+    }, 5000)
+
+    return () => {
+      clearInterval(pollInterval)
+    }
+  }, [statusResult?.status, identifier, email])
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (validate()) {
-      setHasChecked(true)
+      performStatusCheck(identifier, email)
     }
+  }
+
+  const handleRefresh = () => {
+    if (identifier.trim() && email.trim()) {
+      performStatusCheck(identifier, email, true)
+    }
+  }
+
+  const handleResetInquiry = () => {
+    setStatusResult(null)
+    setQueryError(null)
+    setErrors({})
   }
 
   return (
@@ -88,10 +196,10 @@ export default function RequestStatusPage({
                 Account Verification Lifecycle
               </span>
               <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                Registration Status Guidance
+                Registration Status
               </h2>
               <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
-                Understand how new Student and Lecturer accounts are verified and activated by system administrators.
+                Check whether your student or lecturer registration request has been reviewed and approved by administrators.
               </p>
             </div>
 
@@ -109,7 +217,7 @@ export default function RequestStatusPage({
                   <div>
                     <span className="font-semibold text-slate-900">Submission Received</span>
                     <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
-                      Your registration is recorded in the PostgreSQL database with BCrypt password hashing and assigned <code className="text-amber-800 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 text-[10px]">PENDING_APPROVAL</code> status.
+                      Your registration is recorded securely with password hashing and assigned <code className="text-amber-800 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 text-[10px]">PENDING_APPROVAL</code> status.
                     </p>
                   </div>
                 </div>
@@ -121,7 +229,7 @@ export default function RequestStatusPage({
                   <div>
                     <span className="font-semibold text-slate-900">Administrative Audit</span>
                     <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
-                      Campus administrators verify your university enrollment or staff appointment from the Admin Approval Queue.
+                      Campus administrators verify your university enrollment or staff appointment in the Admin Approvals Queue.
                     </p>
                   </div>
                 </div>
@@ -133,14 +241,176 @@ export default function RequestStatusPage({
                   <div>
                     <span className="font-semibold text-slate-900">Account Activation</span>
                     <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">
-                      Once approved, status transitions to <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 text-[10px]">ACTIVE</code>, allowing you to log in and access your role-based academic dashboard.
+                      Once approved, status transitions to <code className="text-emerald-800 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 text-[10px]">ACTIVE</code>, allowing portal login with your credentials.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Status Inquiry Form */}
+            {/* Error Feedback Banner */}
+            {queryError && (
+              <div className="mb-5 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-900 shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <svg className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <span className="font-semibold text-rose-950 block">Status Inquiry Notice</span>
+                    <p className="mt-0.5 text-rose-800 leading-relaxed">{queryError}</p>
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => performStatusCheck(identifier, email)}
+                        className="rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-rose-700 transition-colors"
+                      >
+                        Try Again
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetInquiry}
+                        className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-50 transition-colors"
+                      >
+                        Edit Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Live Inquiry Result Banner (Connected to Real API) */}
+            {statusResult && (
+              <div className="mb-6 space-y-3">
+                {statusResult.status === 'PENDING_APPROVAL' && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-xs text-amber-900 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <span className="font-semibold text-amber-950 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        Verification Status:
+                      </span>
+                      <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-950 border border-amber-300">
+                        PENDING APPROVAL
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-amber-900 leading-relaxed">
+                      <p>
+                        Application for <strong>{identifier}</strong> ({email}) is actively recorded and awaiting administrator review.
+                      </p>
+                      <p className="mt-1 text-amber-800 text-[11px]">
+                        {statusResult.message}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                      >
+                        <svg
+                          className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetInquiry}
+                        className="text-xs text-amber-800 hover:text-amber-950 underline underline-offset-2 font-medium"
+                      >
+                        Check another account
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {statusResult.status === 'ACTIVE' && (
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-50/90 p-4 text-xs text-emerald-900 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                      <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        Verification Status:
+                      </span>
+                      <span className="rounded-full bg-emerald-200/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-950 border border-emerald-300">
+                        APPROVED &amp; ACTIVE
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-emerald-900 leading-relaxed">
+                      <p>
+                        Account <strong>{identifier}</strong> ({email}) has been verified and activated!
+                      </p>
+                      <p className="mt-1 text-emerald-800 text-[11px]">
+                        {statusResult.message}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={onNavigateToLogin}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                      >
+                        Proceed to Sign In
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetInquiry}
+                        className="text-xs text-emerald-800 hover:text-emerald-950 underline underline-offset-2 font-medium"
+                      >
+                        Check another account
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {statusResult.status === 'REJECTED' && (
+                  <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-4 text-xs text-rose-900 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-rose-200/80 pb-2">
+                      <span className="font-semibold text-rose-950 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-rose-500"></span>
+                        Verification Status:
+                      </span>
+                      <span className="rounded-full bg-rose-200/90 px-2.5 py-0.5 text-[11px] font-bold text-rose-950 border border-rose-300">
+                        REQUEST REJECTED
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-rose-900 leading-relaxed">
+                      <p>
+                        The registration request for <strong>{identifier}</strong> was reviewed and declined by university administration.
+                      </p>
+                      <p className="mt-1 text-rose-800 text-[11px]">
+                        {statusResult.message}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-rose-200/60 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={onNavigateToRegister}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
+                      >
+                        Submit New Request
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetInquiry}
+                        className="text-xs text-rose-800 hover:text-rose-950 underline underline-offset-2 font-medium"
+                      >
+                        Check another account
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status Inquiry Form (only shown or editable when not viewing active result) */}
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
                 <label htmlFor="status-identifier" className="block text-xs font-semibold text-slate-700 mb-1">
@@ -151,9 +421,9 @@ export default function RequestStatusPage({
                   name="identifier"
                   type="text"
                   value={identifier}
+                  disabled={isLoading || isRefreshing}
                   onChange={(e) => {
                     setIdentifier(e.target.value)
-                    setHasChecked(false)
                     if (errors.identifier) {
                       setErrors((prev) => ({ ...prev, identifier: undefined }))
                     }
@@ -180,9 +450,9 @@ export default function RequestStatusPage({
                   type="email"
                   autoComplete="email"
                   value={email}
+                  disabled={isLoading || isRefreshing}
                   onChange={(e) => {
                     setEmail(e.target.value)
-                    setHasChecked(false)
                     if (errors.email) {
                       setErrors((prev) => ({ ...prev, email: undefined }))
                     }
@@ -201,31 +471,22 @@ export default function RequestStatusPage({
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-colors mt-2"
+                disabled={isLoading || isRefreshing}
+                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-60 transition-colors mt-2 inline-flex items-center justify-center gap-2"
               >
-                Inquire Verification Status
+                {isLoading ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Verifying with Server...</span>
+                  </>
+                ) : (
+                  <span>Inquire Verification Status</span>
+                )}
               </button>
             </form>
-
-            {/* Simulated Live Inquiry Result */}
-            {hasChecked && (
-              <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50/80 p-4 text-xs text-amber-900 shadow-xs space-y-2">
-                <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
-                  <span className="font-semibold text-amber-950">Inquiry Result:</span>
-                  <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                    PENDING APPROVAL
-                  </span>
-                </div>
-                <div className="text-[11px] text-amber-800 leading-relaxed">
-                  <p>
-                    Submitted request for <strong>{identifier}</strong> ({email}) is actively recorded in the system.
-                  </p>
-                  <p className="mt-1">
-                    An administrator must approve this account from the Admin Approval Queue before sign-in can proceed. If you require immediate activation for semester onboarding, please contact your academic administrator.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Helpful Links */}
             <div className="mt-6 border-t border-slate-100 pt-4 space-y-2 text-center text-xs text-slate-600">
