@@ -23,5 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByStatusOrderByIdAsc(User.UserStatus status);
 
+    List<User> findByRoleAndStatusOrderByFullNameAsc(Role role, User.UserStatus status);
+
     Optional<User> findByIdentifierIgnoreCaseAndEmailIgnoreCase(String identifier, String email);
 }

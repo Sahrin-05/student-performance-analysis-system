@@ -3,6 +3,9 @@ import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import RequestStatusPage from './RequestStatusPage'
 import AdminApprovalsQueue from './AdminApprovalsQueue'
+import AdminAcademicHub from './AdminAcademicHub'
+import LecturerSubjectsView from './LecturerSubjectsView'
+import StudentEnrolmentsView from './StudentEnrolmentsView'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -13,7 +16,9 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
-  const [adminView, setAdminView] = useState<'overview' | 'approvals'>('overview')
+  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic'>('overview')
+  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects'>('overview')
+  const [studentView, setStudentView] = useState<'overview' | 'enrolments'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
 
@@ -22,6 +27,8 @@ export default function App() {
     const unsubscribe = onUnauthorized(() => {
       setCurrentUser(null)
       setAdminView('overview')
+      setLecturerView('overview')
+      setStudentView('overview')
       setCurrentPage('login')
     })
     return unsubscribe
@@ -31,6 +38,8 @@ export default function App() {
     clearAuthSession()
     setCurrentUser(null)
     setAdminView('overview')
+    setLecturerView('overview')
+    setStudentView('overview')
     setSidebarOpen(false)
     setCurrentPage('dashboard')
   }
@@ -48,6 +57,8 @@ export default function App() {
         onLoginSuccess={(user) => {
           setCurrentUser(user)
           setAdminView('overview')
+          setLecturerView('overview')
+          setStudentView('overview')
           setCurrentPage('dashboard')
         }}
       />
@@ -283,52 +294,168 @@ export default function App() {
   }
 
   // 5. Authenticated Role-Based Dashboard View (Student, Lecturer, Admin)
-  const navLinks = [
-    {
-      name: 'Overview Dashboard',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      ),
-      active: currentUser.role === 'ADMIN' ? adminView === 'overview' : true,
-      onClick: currentUser.role === 'ADMIN' ? () => {
-        setAdminView('overview')
-        setSidebarOpen(false)
-      } : undefined,
-    },
-    {
-      name: currentUser.role === 'ADMIN' ? 'User Approvals Queue' : 'Courses & Subjects',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-      active: currentUser.role === 'ADMIN' ? adminView === 'approvals' : false,
-      onClick: currentUser.role === 'ADMIN' ? () => {
-        setAdminView('approvals')
-        setSidebarOpen(false)
-      } : undefined,
-    },
-    {
-      name: currentUser.role === 'ADMIN' ? 'System Audit Trail' : 'Grades & Marks',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      ),
-      active: false,
-    },
-    {
-      name: 'Analytics & Reports',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      active: false,
-    },
-  ]
+  const getNavLinks = () => {
+    if (currentUser.role === 'ADMIN') {
+      return [
+        {
+          name: 'Overview Dashboard',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          ),
+          active: adminView === 'overview',
+          onClick: () => {
+            setAdminView('overview')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'Academic Management',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          ),
+          active: adminView === 'academic',
+          onClick: () => {
+            setAdminView('academic')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'User Approvals Queue',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          ),
+          active: adminView === 'approvals',
+          onClick: () => {
+            setAdminView('approvals')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'System Audit Trail',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          ),
+          active: false,
+        },
+        {
+          name: 'Analytics & Reports',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          ),
+          active: false,
+        },
+      ]
+    }
+
+    if (currentUser.role === 'LECTURER') {
+      return [
+        {
+          name: 'Overview Dashboard',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          ),
+          active: lecturerView === 'overview',
+          onClick: () => {
+            setLecturerView('overview')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'Teaching Subjects',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          ),
+          active: lecturerView === 'subjects',
+          onClick: () => {
+            setLecturerView('subjects')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'Grades & Marks',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          ),
+          active: false,
+        },
+        {
+          name: 'Analytics & Reports',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          ),
+          active: false,
+        },
+      ]
+    }
+
+    // Default: STUDENT
+    return [
+      {
+        name: 'Overview Dashboard',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        ),
+        active: studentView === 'overview',
+        onClick: () => {
+          setStudentView('overview')
+          setSidebarOpen(false)
+        },
+      },
+      {
+        name: 'Courses & Subjects',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        ),
+        active: studentView === 'enrolments',
+        onClick: () => {
+          setStudentView('enrolments')
+          setSidebarOpen(false)
+        },
+      },
+      {
+        name: 'Grades & Marks',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        ),
+        active: false,
+      },
+      {
+        name: 'Analytics & Reports',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        ),
+        active: false,
+      },
+    ]
+  }
+
+  const navLinks = getNavLinks()
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 antialiased font-sans overflow-hidden">
@@ -457,9 +584,23 @@ export default function App() {
             </button>
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {currentUser.role === 'ADMIN' && (adminView === 'approvals' ? 'User Approvals & Account Authorization' : 'Administrator Management Center')}
-                {currentUser.role === 'LECTURER' && 'Faculty Instruction & Grading Portal'}
-                {currentUser.role === 'STUDENT' && 'Student Academic Progress Portal'}
+                {currentUser.role === 'ADMIN' && (
+                  adminView === 'approvals'
+                    ? 'User Approvals & Account Authorization'
+                    : adminView === 'academic'
+                    ? 'Academic Structure & Curriculum Hub'
+                    : 'Administrator Management Center'
+                )}
+                {currentUser.role === 'LECTURER' && (
+                  lecturerView === 'subjects'
+                    ? 'Faculty Assigned Teaching Subjects & Rosters'
+                    : 'Faculty Instruction & Grading Portal'
+                )}
+                {currentUser.role === 'STUDENT' && (
+                  studentView === 'enrolments'
+                    ? 'Student Course Enrolments & Curriculum'
+                    : 'Student Academic Progress Portal'
+                )}
               </h2>
               <p className="hidden text-xs text-slate-500 sm:block">
                 Authenticated User: {currentUser.identifier} ({currentUser.email})
@@ -485,7 +626,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs cursor-pointer"
             >
               Sign Out
             </button>
@@ -499,6 +640,8 @@ export default function App() {
             {currentUser.role === 'ADMIN' && (
               adminView === 'approvals' ? (
                 <AdminApprovalsQueue onBackToOverview={() => setAdminView('overview')} />
+              ) : adminView === 'academic' ? (
+                <AdminAcademicHub onBackToOverview={() => setAdminView('overview')} />
               ) : (
                 <>
                   <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
@@ -523,20 +666,46 @@ export default function App() {
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Academic Foundation</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Active</h4>
+                      <p className="text-[11px] text-emerald-600 mt-1">● Curriculum Hub Ready</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">Approval Workflow</span>
                       <h4 className="text-lg font-bold text-slate-900 mt-1">Queue Ready</h4>
                       <p className="text-[11px] text-emerald-600 mt-1">● Live Backend API Connected</p>
                     </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Security Policy</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Stateless</h4>
-                      <p className="text-[11px] text-slate-600 mt-1">BCrypt Encryption</p>
-                    </div>
                   </div>
 
-                  {/* Admin Approval Section */}
+                  {/* Academic Management Section */}
                   <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Academic Structure & Curriculum Hub</h4>
+                        <p className="text-xs text-slate-500">Configure departments, degree courses, curriculum subjects, lecturer assignments, and student enrolments</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('academic')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Academic Hub</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-2 leading-relaxed">
+                      <p>
+                        Full administrative control over institutional hierarchy: manage active departments and degree programmes, assign qualified lecturers to subjects, and enrol active students with strict validation.
+                      </p>
+                    </div>
+                  </section>
+
+                  {/* Admin Approval Section */}
+                  <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
                       <div>
                         <h4 className="text-sm font-semibold text-slate-900">Pending Registrations Approval Queue</h4>
@@ -545,7 +714,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setAdminView('approvals')}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <span>Open Approvals Queue</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -566,88 +735,138 @@ export default function App() {
 
             {/* LECTURER DASHBOARD VIEW */}
             {currentUser.role === 'LECTURER' && (
-              <>
-                <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 shadow-xs">
-                  <div className="max-w-3xl space-y-2">
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
-                      Faculty Portal
-                    </span>
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">
-                      Welcome, Instructor {currentUser.fullName}
-                    </h3>
-                    <p className="text-xs leading-relaxed text-slate-600">
-                      Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Monitor enrolled classes and record continuous assessment metrics.
-                    </p>
-                  </div>
-                </section>
+              lecturerView === 'subjects' ? (
+                <LecturerSubjectsView />
+              ) : (
+                <>
+                  <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 shadow-xs">
+                    <div className="max-w-3xl space-y-2">
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
+                        Faculty Portal
+                      </span>
+                      <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+                        Welcome, Instructor {currentUser.fullName}
+                      </h3>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Monitor enrolled classes and record continuous assessment metrics.
+                      </p>
+                    </div>
+                  </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Assigned Courses</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Semester Roster</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Module in development</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Assigned Courses</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Teaching Roster</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('subjects')}
+                        className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mt-1 underline cursor-pointer"
+                      >
+                        View Assigned Subjects →
+                      </button>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Student Assessments</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Continuous Grading</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Next milestone</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Account Status</span>
+                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Verified & Active</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Authenticated via Spring Security</p>
+                    </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Student Assessments</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Continuous Grading</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Module in development</p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Account Status</span>
-                    <h4 className="text-lg font-bold text-emerald-600 mt-1">Verified & Active</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Authenticated via Spring Security</p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-blue-50/70 border border-blue-200 p-4 text-xs text-blue-900 leading-relaxed">
-                  <span className="font-semibold">Academic Modules Notice:</span> Course assignment, class rosters, and assessment mark entry will be connected in upcoming functional milestones. Your lecturer account has been authenticated.
-                </div>
-              </>
+                  <section className="rounded-xl border border-emerald-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Teaching Roster & Student Enrolments</h4>
+                        <p className="text-xs text-slate-500">Access your active subject assignments and view student rosters</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('subjects')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Teaching Roster</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
+                </>
+              )
             )}
 
             {/* STUDENT DASHBOARD VIEW */}
             {currentUser.role === 'STUDENT' && (
-              <>
-                <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8 shadow-xs">
-                  <div className="max-w-3xl space-y-2">
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 border border-blue-200">
-                      Student Academic Standing
-                    </span>
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">
-                      Welcome, {currentUser.fullName}
-                    </h3>
-                    <p className="text-xs leading-relaxed text-slate-600">
-                      Student ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Track your academic progress, continuous assessments, and GPA trends.
-                    </p>
-                  </div>
-                </section>
+              studentView === 'enrolments' ? (
+                <StudentEnrolmentsView />
+              ) : (
+                <>
+                  <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8 shadow-xs">
+                    <div className="max-w-3xl space-y-2">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 border border-blue-200">
+                        Student Academic Standing
+                      </span>
+                      <h3 className="text-2xl font-bold tracking-tight text-slate-900">
+                        Welcome, {currentUser.fullName}
+                      </h3>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        Student ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Track your academic progress, continuous assessments, and GPA trends.
+                      </p>
+                    </div>
+                  </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Academic Status</span>
-                    <h4 className="text-lg font-bold text-emerald-600 mt-1">Good Standing</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Active Matriculation</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Academic Status</span>
+                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Good Standing</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Active Matriculation</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Course Enrolments</span>
+                      <h4 className="text-lg font-bold text-blue-600 mt-1">Registered</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('enrolments')}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1 underline cursor-pointer"
+                      >
+                        View Enrolled Subjects →
+                      </button>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Intervention Alert</span>
+                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Clear</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">No at-risk indicators</p>
+                    </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Cumulative GPA</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-1">Term 1</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Awaiting grade posting</p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                    <span className="text-xs text-slate-500 font-medium">Intervention Alert</span>
-                    <h4 className="text-lg font-bold text-emerald-600 mt-1">Clear</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">No at-risk indicators</p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-blue-50/70 border border-blue-200 p-4 text-xs text-blue-900 leading-relaxed">
-                  <span className="font-semibold">Student Portal Notice:</span> Course syllabus enrollment and individual grade sheets are scheduled for upcoming academic releases. Your student account has been successfully verified and activated.
-                </div>
-              </>
+                  <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Curriculum & Subject Enrolments</h4>
+                        <p className="text-xs text-slate-500">Inspect your current semester registered subjects and credit weighting</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('enrolments')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open My Enrolments</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
+                </>
+              )
             )}
           </div>
         </main>
