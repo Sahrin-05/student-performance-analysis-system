@@ -10,6 +10,9 @@ import LecturerGradingView from './LecturerGradingView'
 import LecturerAttendanceView from './LecturerAttendanceView'
 import StudentResultsView from './StudentResultsView'
 import StudentAttendanceView from './StudentAttendanceView'
+import AdminRiskAlertsView from './AdminRiskAlertsView'
+import LecturerRiskAlertsView from './LecturerRiskAlertsView'
+import StudentRiskAlertsView from './StudentRiskAlertsView'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -20,9 +23,9 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
-  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic'>('overview')
-  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance'>('overview')
-  const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance'>('overview')
+  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic' | 'risk'>('overview')
+  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance' | 'risk'>('overview')
+  const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
 
@@ -350,13 +353,17 @@ export default function App() {
           active: false,
         },
         {
-          name: 'Analytics & Reports',
+          name: 'Risk Alerts & Pastoral Care',
           icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           ),
-          active: false,
+          active: adminView === 'risk',
+          onClick: () => {
+            setAdminView('risk')
+            setSidebarOpen(false)
+          },
         },
       ]
     }
@@ -416,13 +423,17 @@ export default function App() {
           },
         },
         {
-          name: 'Analytics & Reports',
+          name: 'Student Risk Alerts',
           icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           ),
-          active: false,
+          active: lecturerView === 'risk',
+          onClick: () => {
+            setLecturerView('risk')
+            setSidebarOpen(false)
+          },
         },
       ]
     }
@@ -482,13 +493,17 @@ export default function App() {
         },
       },
       {
-        name: 'Analytics & Reports',
+        name: 'My Alerts & Advising',
         icon: (
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         ),
-        active: false,
+        active: studentView === 'alerts',
+        onClick: () => {
+          setStudentView('alerts')
+          setSidebarOpen(false)
+        },
       },
     ]
   }
@@ -627,6 +642,8 @@ export default function App() {
                     ? 'User Approvals & Account Authorization'
                     : adminView === 'academic'
                     ? 'Academic Structure & Curriculum Hub'
+                    : adminView === 'risk'
+                    ? 'Institutional Risk Alerts & Pastoral Care'
                     : 'Administrator Management Center'
                 )}
                 {currentUser.role === 'LECTURER' && (
@@ -636,6 +653,8 @@ export default function App() {
                     ? 'Assessment Management & Marks Entry Matrix'
                     : lecturerView === 'attendance'
                     ? 'Faculty Attendance Register & Compliance'
+                    : lecturerView === 'risk'
+                    ? 'Student Academic Risk Alerts & Advising'
                     : 'Faculty Instruction & Grading Portal'
                 )}
                 {currentUser.role === 'STUDENT' && (
@@ -645,6 +664,8 @@ export default function App() {
                     ? 'Published Academic Results & Provisional Grades'
                     : studentView === 'attendance'
                     ? 'Attendance Record & Exam Eligibility'
+                    : studentView === 'alerts'
+                    ? 'Academic Advising & Early Alerts'
                     : 'Student Academic Progress Portal'
                 )}
               </h2>
@@ -688,6 +709,8 @@ export default function App() {
                 <AdminApprovalsQueue onBackToOverview={() => setAdminView('overview')} />
               ) : adminView === 'academic' ? (
                 <AdminAcademicHub onBackToOverview={() => setAdminView('overview')} />
+              ) : adminView === 'risk' ? (
+                <AdminRiskAlertsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
@@ -775,6 +798,32 @@ export default function App() {
                       </p>
                     </div>
                   </section>
+
+                  {/* Institutional Risk Alerts Section */}
+                  <section className="rounded-xl border border-amber-200 bg-white p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Institutional Risk Alerts & Pastoral Care</h4>
+                        <p className="text-xs text-slate-500">Run system-wide evaluations, monitor attendance and marks risk flags, and record intervention workflows</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('risk')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Risk Dashboard</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg bg-amber-50/50 border border-amber-200 p-4 text-xs text-amber-900 space-y-2 leading-relaxed">
+                      <p>
+                        Institutional early warning system: detects attendance warnings (&lt; 80%), low academic scores (&lt; 40%), performance declines (&ge; 15%), and missing assessments with persistent audit logging.
+                      </p>
+                    </div>
+                  </section>
                 </>
               )
             )}
@@ -787,6 +836,8 @@ export default function App() {
                 <LecturerGradingView />
               ) : lecturerView === 'attendance' ? (
                 <LecturerAttendanceView />
+              ) : lecturerView === 'risk' ? (
+                <LecturerRiskAlertsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 shadow-xs">
@@ -798,12 +849,12 @@ export default function App() {
                         Welcome, Instructor {currentUser.fullName}
                       </h3>
                       <p className="text-xs leading-relaxed text-slate-600">
-                        Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Manage assessments, input student marks, calculate provisional grades, and record lecture attendance.
+                        Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Manage assessments, input student marks, calculate provisional grades, record lecture attendance, and review student risk alerts.
                       </p>
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">Assigned Courses</span>
                       <h4 className="text-lg font-bold text-slate-900 mt-1">Teaching Roster</h4>
@@ -839,6 +890,18 @@ export default function App() {
                         Log Attendance Sessions →
                       </button>
                     </div>
+
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-xs">
+                      <span className="text-xs text-amber-700 font-medium">Early Warning System</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Risk Alerts</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('risk')}
+                        className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 mt-1 underline cursor-pointer"
+                      >
+                        Inspect Flagged Students →
+                      </button>
+                    </div>
                   </div>
 
                   <section className="rounded-xl border border-emerald-200 bg-white p-6 shadow-xs space-y-3">
@@ -859,6 +922,25 @@ export default function App() {
                       </button>
                     </div>
                   </section>
+
+                  <section className="rounded-xl border border-amber-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Student Academic Risk & Early Warning</h4>
+                        <p className="text-xs text-slate-500">Scan classes for low attendance or grades, conduct risk reviews, and document academic advising interventions.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('risk')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Risk Alerts</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
                 </>
               )
             )}
@@ -871,6 +953,8 @@ export default function App() {
                 <StudentResultsView />
               ) : studentView === 'attendance' ? (
                 <StudentAttendanceView />
+              ) : studentView === 'alerts' ? (
+                <StudentRiskAlertsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8 shadow-xs">
@@ -887,7 +971,7 @@ export default function App() {
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">Enrolled Subjects</span>
                       <h4 className="text-lg font-bold text-blue-600 mt-1">Course Curriculum</h4>
@@ -923,6 +1007,18 @@ export default function App() {
                         View Attendance Stats →
                       </button>
                     </div>
+
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-xs">
+                      <span className="text-xs text-amber-700 font-medium">Academic Advising</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Early Alerts</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('alerts')}
+                        className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 mt-1 underline cursor-pointer"
+                      >
+                        Check Alerts & Advice →
+                      </button>
+                    </div>
                   </div>
 
                   <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-3">
@@ -937,6 +1033,25 @@ export default function App() {
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
                       >
                         <span>View My Results</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border border-amber-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Academic Advising & Early Warning Notices</h4>
+                        <p className="text-xs text-slate-500">View proactive alerts regarding attendance benchmarks or assessment scores with guidance on academic support resources.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('alerts')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
+                      >
+                        <span>View Early Alerts</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
