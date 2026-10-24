@@ -6,6 +6,10 @@ import AdminApprovalsQueue from './AdminApprovalsQueue'
 import AdminAcademicHub from './AdminAcademicHub'
 import LecturerSubjectsView from './LecturerSubjectsView'
 import StudentEnrolmentsView from './StudentEnrolmentsView'
+import LecturerGradingView from './LecturerGradingView'
+import LecturerAttendanceView from './LecturerAttendanceView'
+import StudentResultsView from './StudentResultsView'
+import StudentAttendanceView from './StudentAttendanceView'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -17,8 +21,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
   const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic'>('overview')
-  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects'>('overview')
-  const [studentView, setStudentView] = useState<'overview' | 'enrolments'>('overview')
+  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance'>('overview')
+  const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
 
@@ -392,7 +396,24 @@ export default function App() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
           ),
-          active: false,
+          active: lecturerView === 'grading',
+          onClick: () => {
+            setLecturerView('grading')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'Attendance Register',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          ),
+          active: lecturerView === 'attendance',
+          onClick: () => {
+            setLecturerView('attendance')
+            setSidebarOpen(false)
+          },
         },
         {
           name: 'Analytics & Reports',
@@ -441,7 +462,24 @@ export default function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
         ),
-        active: false,
+        active: studentView === 'results',
+        onClick: () => {
+          setStudentView('results')
+          setSidebarOpen(false)
+        },
+      },
+      {
+        name: 'Attendance & Clearance',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        ),
+        active: studentView === 'attendance',
+        onClick: () => {
+          setStudentView('attendance')
+          setSidebarOpen(false)
+        },
       },
       {
         name: 'Analytics & Reports',
@@ -594,11 +632,19 @@ export default function App() {
                 {currentUser.role === 'LECTURER' && (
                   lecturerView === 'subjects'
                     ? 'Faculty Assigned Teaching Subjects & Rosters'
+                    : lecturerView === 'grading'
+                    ? 'Assessment Management & Marks Entry Matrix'
+                    : lecturerView === 'attendance'
+                    ? 'Faculty Attendance Register & Compliance'
                     : 'Faculty Instruction & Grading Portal'
                 )}
                 {currentUser.role === 'STUDENT' && (
                   studentView === 'enrolments'
                     ? 'Student Course Enrolments & Curriculum'
+                    : studentView === 'results'
+                    ? 'Published Academic Results & Provisional Grades'
+                    : studentView === 'attendance'
+                    ? 'Attendance Record & Exam Eligibility'
                     : 'Student Academic Progress Portal'
                 )}
               </h2>
@@ -737,6 +783,10 @@ export default function App() {
             {currentUser.role === 'LECTURER' && (
               lecturerView === 'subjects' ? (
                 <LecturerSubjectsView />
+              ) : lecturerView === 'grading' ? (
+                <LecturerGradingView />
+              ) : lecturerView === 'attendance' ? (
+                <LecturerAttendanceView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 shadow-xs">
@@ -748,7 +798,7 @@ export default function App() {
                         Welcome, Instructor {currentUser.fullName}
                       </h3>
                       <p className="text-xs leading-relaxed text-slate-600">
-                        Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Monitor enrolled classes and record continuous assessment metrics.
+                        Staff ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Manage assessments, input student marks, calculate provisional grades, and record lecture attendance.
                       </p>
                     </div>
                   </section>
@@ -767,30 +817,42 @@ export default function App() {
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Student Assessments</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Continuous Grading</h4>
-                      <p className="text-[11px] text-slate-500 mt-1">Next milestone</p>
+                      <span className="text-xs text-slate-500 font-medium">Student Performance</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Continuous Marks</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('grading')}
+                        className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mt-1 underline cursor-pointer"
+                      >
+                        Marks Entry Matrix →
+                      </button>
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Account Status</span>
-                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Verified & Active</h4>
-                      <p className="text-[11px] text-slate-500 mt-1">Authenticated via Spring Security</p>
+                      <span className="text-xs text-slate-500 font-medium">Class Attendance</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Session Register</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('attendance')}
+                        className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mt-1 underline cursor-pointer"
+                      >
+                        Log Attendance Sessions →
+                      </button>
                     </div>
                   </div>
 
                   <section className="rounded-xl border border-emerald-200 bg-white p-6 shadow-xs space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-900">Teaching Roster & Student Enrolments</h4>
-                        <p className="text-xs text-slate-500">Access your active subject assignments and view student rosters</p>
+                        <h4 className="text-sm font-semibold text-slate-900">Assessment & Marks Entry Hub</h4>
+                        <p className="text-xs text-slate-500">Configure weighting schemes (quizzes, assignments, exams), record marks, and publish final results.</p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setLecturerView('subjects')}
+                        onClick={() => setLecturerView('grading')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
                       >
-                        <span>Open Teaching Roster</span>
+                        <span>Open Marks Entry</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
@@ -805,6 +867,10 @@ export default function App() {
             {currentUser.role === 'STUDENT' && (
               studentView === 'enrolments' ? (
                 <StudentEnrolmentsView />
+              ) : studentView === 'results' ? (
+                <StudentResultsView />
+              ) : studentView === 'attendance' ? (
+                <StudentAttendanceView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8 shadow-xs">
@@ -816,21 +882,15 @@ export default function App() {
                         Welcome, {currentUser.fullName}
                       </h3>
                       <p className="text-xs leading-relaxed text-slate-600">
-                        Student ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Track your academic progress, continuous assessments, and GPA trends.
+                        Student ID: <span className="font-semibold text-slate-800">{currentUser.identifier}</span> • Track your registered subjects, published grades, and attendance clearance.
                       </p>
                     </div>
                   </section>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Academic Status</span>
-                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Good Standing</h4>
-                      <p className="text-[11px] text-slate-500 mt-1">Active Matriculation</p>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Course Enrolments</span>
-                      <h4 className="text-lg font-bold text-blue-600 mt-1">Registered</h4>
+                      <span className="text-xs text-slate-500 font-medium">Enrolled Subjects</span>
+                      <h4 className="text-lg font-bold text-blue-600 mt-1">Course Curriculum</h4>
                       <button
                         type="button"
                         onClick={() => setStudentView('enrolments')}
@@ -841,24 +901,42 @@ export default function App() {
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Intervention Alert</span>
-                      <h4 className="text-lg font-bold text-emerald-600 mt-1">Clear</h4>
-                      <p className="text-[11px] text-slate-500 mt-1">No at-risk indicators</p>
+                      <span className="text-xs text-slate-500 font-medium">Academic Results</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Published Marks</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('results')}
+                        className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mt-1 underline cursor-pointer"
+                      >
+                        View Final Grades →
+                      </button>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+                      <span className="text-xs text-slate-500 font-medium">Attendance & Clearance</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Exam Eligibility</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('attendance')}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1 underline cursor-pointer"
+                      >
+                        View Attendance Stats →
+                      </button>
                     </div>
                   </div>
 
                   <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-900">Curriculum & Subject Enrolments</h4>
-                        <p className="text-xs text-slate-500">Inspect your current semester registered subjects and credit weighting</p>
+                        <h4 className="text-sm font-semibold text-slate-900">Continuous Assessment & Published Grades</h4>
+                        <p className="text-xs text-slate-500">Inspect your performance breakdown across quizzes, assignments, midterms, and finals once released by your lecturer.</p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setStudentView('enrolments')}
+                        onClick={() => setStudentView('results')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
                       >
-                        <span>Open My Enrolments</span>
+                        <span>View My Results</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>

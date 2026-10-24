@@ -32,5 +32,7 @@ public interface LecturerAssignmentRepository extends JpaRepository<LecturerAssi
             String semester
     );
 
+    boolean existsBySubjectIdAndLecturerIdAndActiveTrue(Long subjectId, Long lecturerId);
+
     boolean existsBySubjectId(Long subjectId);
 }

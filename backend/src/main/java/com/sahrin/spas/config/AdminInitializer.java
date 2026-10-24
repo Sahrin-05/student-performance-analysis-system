@@ -53,7 +53,7 @@ public class AdminInitializer implements CommandLineRunner {
             return;
         }
 
-        String normalizedEmail = adminEmail.trim().toLowerCase();
+               String normalizedEmail = adminEmail.trim().toLowerCase();
         String normalizedIdentifier = (adminIdentifier != null && !adminIdentifier.trim().isEmpty())
                 ? adminIdentifier.trim()
                 : "ADMIN001";
