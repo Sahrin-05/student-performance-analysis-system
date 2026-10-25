@@ -36,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
@@ -280,6 +281,57 @@ class AcademicServiceTest {
         assertThrows(DuplicateResourceException.class, () -> academicService.assignLecturer(req));
     }
 
+    @Test
+    @DisplayName("Should translate DataIntegrityViolationException to DuplicateResourceException during assignLecturer")
+    void assignLecturer_dataIntegrityViolation_throwsDuplicateResourceException() {
+        when(subjectRepository.findById(100L)).thenReturn(Optional.of(subject));
+        when(userRepository.findById(50L)).thenReturn(Optional.of(lecturer));
+        when(lecturerAssignmentRepository.existsBySubjectIdAndLecturerIdAndAcademicYearAndSemesterAndActiveTrue(
+                100L, 50L, "2025/2026", "Semester 1")).thenReturn(false);
+        when(lecturerAssignmentRepository.save(any(LecturerAssignment.class)))
+                .thenThrow(new DataIntegrityViolationException("unique constraint violated"));
+
+        LecturerAssignmentRequest req = new LecturerAssignmentRequest(100L, 50L, "2025/2026", "Semester 1");
+        DuplicateResourceException ex = assertThrows(DuplicateResourceException.class, () -> academicService.assignLecturer(req));
+        assertTrue(ex.getMessage().contains("already assigned"));
+    }
+
+    @Test
+    @DisplayName("Should successfully update lecturer assignment")
+    void updateAssignment_success() {
+        LecturerAssignment existing = new LecturerAssignment(subject, lecturer, "2025/2026", "Semester 1");
+        existing.setId(1L);
+
+        when(lecturerAssignmentRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(subjectRepository.findById(100L)).thenReturn(Optional.of(subject));
+        when(userRepository.findById(50L)).thenReturn(Optional.of(lecturer));
+        when(lecturerAssignmentRepository.saveAndFlush(any(LecturerAssignment.class))).thenAnswer(i -> i.getArgument(0));
+
+        LecturerAssignmentRequest req = new LecturerAssignmentRequest(100L, 50L, "2025/2026", "Semester 2");
+        LecturerAssignmentResponse res = academicService.updateAssignment(1L, req);
+
+        assertNotNull(res);
+        assertEquals("2025/2026", res.getAcademicYear());
+        assertEquals("Semester 2", res.getSemester());
+    }
+
+    @Test
+    @DisplayName("Should translate DataIntegrityViolationException to DuplicateResourceException during updateAssignment")
+    void updateAssignment_dataIntegrityViolation_throwsDuplicateResourceException() {
+        LecturerAssignment existing = new LecturerAssignment(subject, lecturer, "2025/2026", "Semester 1");
+        existing.setId(1L);
+
+        when(lecturerAssignmentRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(subjectRepository.findById(100L)).thenReturn(Optional.of(subject));
+        when(userRepository.findById(50L)).thenReturn(Optional.of(lecturer));
+        when(lecturerAssignmentRepository.saveAndFlush(any(LecturerAssignment.class)))
+                .thenThrow(new DataIntegrityViolationException("unique constraint violated"));
+
+        LecturerAssignmentRequest req = new LecturerAssignmentRequest(100L, 50L, "2025/2026", "Semester 2");
+        DuplicateResourceException ex = assertThrows(DuplicateResourceException.class, () -> academicService.updateAssignment(1L, req));
+        assertTrue(ex.getMessage().contains("already assigned"));
+    }
+
     // ==========================================
     // STUDENT ENROLMENT TESTS
     // ==========================================
@@ -341,6 +393,22 @@ class AcademicServiceTest {
 
         EnrollmentRequest req = new EnrollmentRequest(60L, 10L, 100L, "2025/2026", "Semester 1");
         assertThrows(DuplicateResourceException.class, () -> academicService.enrolStudent(req));
+    }
+
+    @Test
+    @DisplayName("Should translate DataIntegrityViolationException to DuplicateResourceException during enrolStudent")
+    void enrolStudent_dataIntegrityViolation_throwsDuplicateResourceException() {
+        when(userRepository.findById(60L)).thenReturn(Optional.of(student));
+        when(courseRepository.findById(10L)).thenReturn(Optional.of(course));
+        when(subjectRepository.findById(100L)).thenReturn(Optional.of(subject));
+        when(enrollmentRepository.existsByStudentIdAndSubjectIdAndAcademicYearAndSemesterAndStatus(
+                60L, 100L, "2025/2026", "Semester 1", EnrollmentStatus.ACTIVE)).thenReturn(false);
+        when(enrollmentRepository.save(any(Enrollment.class)))
+                .thenThrow(new DataIntegrityViolationException("unique constraint violated"));
+
+        EnrollmentRequest req = new EnrollmentRequest(60L, 10L, 100L, "2025/2026", "Semester 1");
+        DuplicateResourceException ex = assertThrows(DuplicateResourceException.class, () -> academicService.enrolStudent(req));
+        assertTrue(ex.getMessage().contains("already enrolled"));
     }
 
     // ==========================================

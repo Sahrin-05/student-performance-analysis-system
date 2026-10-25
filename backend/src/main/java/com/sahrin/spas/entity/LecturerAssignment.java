@@ -10,12 +10,19 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "lecturer_assignments"
+    name = "lecturer_assignments",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_lecturer_assignments_subject_lecturer_year_sem",
+            columnNames = {"subject_id", "lecturer_id", "academic_year", "semester"}
+        )
+    }
 )
 public class LecturerAssignment {
 

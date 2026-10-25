@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -245,5 +246,62 @@ class AdminAcademicControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.studentName").value("Bob Smith"));
+    }
+
+    @Test
+    @DisplayName("POST /api/admin/academic/enrolments with duplicate enrolment returns 409 Conflict")
+    void enrolStudent_duplicate_returns409() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        EnrollmentRequest req = new EnrollmentRequest(60L, 10L, 100L, "2025/2026", "Semester 1");
+
+        when(academicService.enrolStudent(any(EnrollmentRequest.class)))
+                .thenThrow(new DuplicateResourceException("Student is already enrolled in this subject for 2025/2026 Semester 1."));
+
+        mockMvc.perform(post("/api/admin/academic/enrolments")
+                        .header("Authorization", "Bearer valid.admin.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("Student is already enrolled in this subject for 2025/2026 Semester 1."));
+    }
+
+    @Test
+    @DisplayName("POST /api/admin/academic/lecturer-assignments with duplicate assignment returns 409 Conflict")
+    void assignLecturer_duplicate_returns409() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        LecturerAssignmentRequest req = new LecturerAssignmentRequest(100L, 50L, "2025/2026", "Semester 1");
+
+        when(academicService.assignLecturer(any(LecturerAssignmentRequest.class)))
+                .thenThrow(new DuplicateResourceException("This lecturer is already assigned to this subject for 2025/2026 Semester 1."));
+
+        mockMvc.perform(post("/api/admin/academic/lecturer-assignments")
+                        .header("Authorization", "Bearer valid.admin.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("This lecturer is already assigned to this subject for 2025/2026 Semester 1."));
+    }
+
+    @Test
+    @DisplayName("PUT /api/admin/academic/lecturer-assignments/{id} with duplicate assignment returns 409 Conflict")
+    void updateAssignment_duplicate_returns409() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        LecturerAssignmentRequest req = new LecturerAssignmentRequest(100L, 50L, "2025/2026", "Semester 1");
+
+        when(academicService.updateAssignment(eq(1L), any(LecturerAssignmentRequest.class)))
+                .thenThrow(new DuplicateResourceException("This lecturer is already assigned to this subject for 2025/2026 Semester 1."));
+
+        mockMvc.perform(put("/api/admin/academic/lecturer-assignments/1")
+                        .header("Authorization", "Bearer valid.admin.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("This lecturer is already assigned to this subject for 2025/2026 Semester 1."));
     }
 }

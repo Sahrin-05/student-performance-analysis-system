@@ -53,7 +53,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 HttpStatus.CONFLICT.value(),
-                "A resource with the provided unique identifier or email already exists."
+                "A resource with the provided unique information already exists."
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
@@ -123,6 +123,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),
                 "INVALID_STATUS_TRANSITION"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "Invalid request argument provided.";
+        ApiErrorResponse response = new ApiErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message,
+                "INVALID_ARGUMENT"
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }

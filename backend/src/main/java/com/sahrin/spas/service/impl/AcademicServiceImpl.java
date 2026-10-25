@@ -28,6 +28,7 @@ import com.sahrin.spas.repository.LecturerAssignmentRepository;
 import com.sahrin.spas.repository.SubjectRepository;
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.AcademicService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -398,8 +399,12 @@ public class AcademicServiceImpl implements AcademicService {
                 academicYear,
                 semester
         );
-        LecturerAssignment saved = lecturerAssignmentRepository.save(assignment);
-        return mapToAssignmentResponse(saved);
+        try {
+            LecturerAssignment saved = lecturerAssignmentRepository.save(assignment);
+            return mapToAssignmentResponse(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException("This lecturer is already assigned to this subject for " + academicYear + " " + semester + ".");
+        }
     }
 
     @Override
@@ -427,8 +432,12 @@ public class AcademicServiceImpl implements AcademicService {
         assignment.setAcademicYear(request.getAcademicYear().trim());
         assignment.setSemester(request.getSemester().trim());
 
-        LecturerAssignment saved = lecturerAssignmentRepository.save(assignment);
-        return mapToAssignmentResponse(saved);
+        try {
+            LecturerAssignment saved = lecturerAssignmentRepository.saveAndFlush(assignment);
+            return mapToAssignmentResponse(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException("This lecturer is already assigned to this subject for " + assignment.getAcademicYear() + " " + assignment.getSemester() + ".");
+        }
     }
 
     @Override
@@ -508,8 +517,12 @@ public class AcademicServiceImpl implements AcademicService {
                 academicYear,
                 semester
         );
-        Enrollment saved = enrollmentRepository.save(enrollment);
-        return mapToEnrollmentResponse(saved);
+        try {
+            Enrollment saved = enrollmentRepository.save(enrollment);
+            return mapToEnrollmentResponse(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException("Student is already enrolled in this subject for " + academicYear + " " + semester + ".");
+        }
     }
 
     @Override

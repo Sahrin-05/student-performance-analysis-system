@@ -5,6 +5,7 @@ import com.sahrin.spas.config.SecurityConfig;
 import com.sahrin.spas.dto.attendance.StudentAttendanceSummaryResponse;
 import com.sahrin.spas.dto.performance.AssessmentRequest;
 import com.sahrin.spas.dto.performance.AssessmentResponse;
+import com.sahrin.spas.dto.performance.MarkEntryRequest;
 import com.sahrin.spas.dto.performance.StudentPublishedResultsResponse;
 import com.sahrin.spas.dto.performance.SubjectResultPublicationResponse;
 import com.sahrin.spas.dto.performance.UnlockRequest;
@@ -165,6 +166,47 @@ class PerformanceAttendanceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attendancePercentage").value(87.5))
                 .andExpect(jsonPath("$.belowWarningThreshold").value(false));
+    }
+
+    @Test
+    @DisplayName("Lecturer create assessment exceeding 100% weight should return 400 Bad Request via IllegalArgumentException")
+    void testLecturerCreateAssessment_weightExceeded_returns400() throws Exception {
+        mockAuth(10L, "lecturer@spas.edu", Role.LECTURER);
+
+        AssessmentRequest req = new AssessmentRequest(
+                "Final Exam", AssessmentType.FINAL_EXAM, 100.0, 50.0, 100L, "2025/2026", "SEMESTER_1");
+
+        when(performanceService.createAssessment(any(AssessmentRequest.class), eq("lecturer@spas.edu")))
+                .thenThrow(new IllegalArgumentException("Total assessment weight cannot exceed 100.0%. Current total is 70.00%; adding 50.00% would equal 120.00%."));
+
+        mockMvc.perform(post("/api/academic/lecturer/performance/assessments")
+                        .header("Authorization", "Bearer valid.lecturer.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ARGUMENT"))
+                .andExpect(jsonPath("$.message").value("Total assessment weight cannot exceed 100.0%. Current total is 70.00%; adding 50.00% would equal 120.00%."));
+    }
+
+    @Test
+    @DisplayName("Lecturer enter mark with score exceeding maxMarks should return 400 Bad Request via IllegalArgumentException")
+    void testLecturerEnterMark_invalidScore_returns400() throws Exception {
+        mockAuth(10L, "lecturer@spas.edu", Role.LECTURER);
+
+        MarkEntryRequest req = new MarkEntryRequest(1L, 10L, 120.0, "Bonus added");
+
+        when(performanceService.enterOrUpdateMark(any(MarkEntryRequest.class), eq("lecturer@spas.edu")))
+                .thenThrow(new IllegalArgumentException("Score must be between 0.00 and the maximum mark of 100.00 for Final Exam."));
+
+        mockMvc.perform(post("/api/academic/lecturer/performance/marks")
+                        .header("Authorization", "Bearer valid.lecturer.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ARGUMENT"))
+                .andExpect(jsonPath("$.message").value("Score must be between 0.00 and the maximum mark of 100.00 for Final Exam."));
     }
 
     @Test
