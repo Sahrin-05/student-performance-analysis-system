@@ -8,7 +8,7 @@ interface LoginPageProps {
   onLoginSuccess?: (user: LoginResponseData) => void
 }
 
-type ErrorCategory = 'pending_approval' | 'rejected' | 'invalid_credentials' | 'connection_error' | 'general'
+type ErrorCategory = 'pending_approval' | 'rejected' | 'suspended' | 'invalid_credentials' | 'connection_error' | 'general'
 
 export default function LoginPage({
   onBackToDashboard,
@@ -91,6 +91,11 @@ export default function LoginPage({
       setServerError(rawMsg)
 
       if (
+        apiErr.errorCode === 'ACCOUNT_SUSPENDED' ||
+        rawMsg.toLowerCase().includes('suspended')
+      ) {
+        setErrorCategory('suspended')
+      } else if (
         apiErr.errorCode === 'ACCOUNT_REJECTED' ||
         rawMsg.toLowerCase().includes('rejected')
       ) {
@@ -241,6 +246,24 @@ export default function LoginPage({
                             </button>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {errorCategory === 'suspended' && (
+                  <div className="mb-5 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-900 shadow-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-200 text-rose-800">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <span className="font-semibold text-rose-950 block">Account Suspended</span>
+                        <p className="text-rose-800 leading-relaxed">
+                          Your account has been administratively suspended. Active sessions are revoked. Please contact faculty administration for assistance.
+                        </p>
                       </div>
                     </div>
                   </div>

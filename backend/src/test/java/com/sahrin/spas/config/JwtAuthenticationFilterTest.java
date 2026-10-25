@@ -292,6 +292,31 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    @DisplayName("10b. User with SUSPENDED status is not authenticated")
+    void doFilter_suspendedUser_doesNotAuthenticate() throws ServletException, IOException {
+        request.addHeader("Authorization", "Bearer " + VALID_TOKEN);
+        when(jwtService.validateToken(VALID_TOKEN)).thenReturn(true);
+        when(jwtService.extractUserId(VALID_TOKEN)).thenReturn(101L);
+        when(jwtService.extractSubject(VALID_TOKEN)).thenReturn("suspended@university.edu");
+
+        User suspendedUser = new User(
+                "Suspended User",
+                "STU-003B",
+                "suspended@university.edu",
+                "$2a$10$encodedPasswordHash",
+                Role.STUDENT,
+                UserStatus.SUSPENDED
+        );
+        suspendedUser.setId(101L);
+        when(userRepository.findById(101L)).thenReturn(Optional.of(suspendedUser));
+
+        jwtAuthenticationFilter.doFilter(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(filterChain, times(1)).doFilter(request, response);
+    }
+
+    @Test
     @DisplayName("11. User with null database role is safely rejected without granting authentication")
     void doFilter_nullDatabaseRole_doesNotAuthenticate() throws ServletException, IOException {
         request.addHeader("Authorization", "Bearer " + VALID_TOKEN);

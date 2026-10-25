@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import RequestStatusPage from './RequestStatusPage'
-import AdminApprovalsQueue from './AdminApprovalsQueue'
+import AdminUserManagementView from './AdminUserManagementView'
 import AdminAcademicHub from './AdminAcademicHub'
 import LecturerSubjectsView from './LecturerSubjectsView'
 import StudentEnrolmentsView from './StudentEnrolmentsView'
@@ -26,7 +26,7 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
-  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic' | 'risk' | 'reports'>('overview')
+  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'users' | 'academic' | 'risk' | 'reports'>('overview')
   const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance' | 'risk' | 'reports'>('overview')
   const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts' | 'reports'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -334,15 +334,15 @@ export default function App() {
           },
         },
         {
-          name: 'User Approvals Queue',
+          name: 'User Management & Approvals',
           icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           ),
-          active: adminView === 'approvals',
+          active: adminView === 'approvals' || adminView === 'users',
           onClick: () => {
-            setAdminView('approvals')
+            setAdminView('users')
             setSidebarOpen(false)
           },
         },
@@ -680,8 +680,8 @@ export default function App() {
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 {currentUser.role === 'ADMIN' && (
-                  adminView === 'approvals'
-                    ? 'User Approvals & Account Authorization'
+                  adminView === 'approvals' || adminView === 'users'
+                    ? 'User Directory & Account Authorization Center'
                     : adminView === 'academic'
                     ? 'Academic Structure & Curriculum Hub'
                     : adminView === 'risk'
@@ -753,8 +753,8 @@ export default function App() {
           <div className="mx-auto max-w-5xl space-y-6">
             {/* ADMIN DASHBOARD VIEW */}
             {currentUser.role === 'ADMIN' && (
-              adminView === 'approvals' ? (
-                <AdminApprovalsQueue onBackToOverview={() => setAdminView('overview')} />
+              adminView === 'approvals' || adminView === 'users' ? (
+                <AdminUserManagementView onBackToOverview={() => setAdminView('overview')} />
               ) : adminView === 'academic' ? (
                 <AdminAcademicHub onBackToOverview={() => setAdminView('overview')} />
               ) : adminView === 'risk' ? (
@@ -791,9 +791,15 @@ export default function App() {
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Approval Workflow</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Queue Ready</h4>
-                      <p className="text-[11px] text-emerald-600 mt-1">● Live Backend API Connected</p>
+                      <span className="text-xs text-slate-500 font-medium">User Management</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Directory & Approvals</h4>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('users')}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1 underline cursor-pointer"
+                      >
+                        Manage Accounts →
+                      </button>
                     </div>
 
                     <div className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-5 shadow-xs">
@@ -835,19 +841,19 @@ export default function App() {
                     </div>
                   </section>
 
-                  {/* Admin Approval Section */}
+                  {/* User Directory & Admin Approval Section */}
                   <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
                       <div>
-                        <h4 className="text-sm font-semibold text-slate-900">Pending Registrations Approval Queue</h4>
-                        <p className="text-xs text-slate-500">Student and Lecturer applicants awaiting administrative authorization</p>
+                        <h4 className="text-sm font-semibold text-slate-900">User Directory & Registration Approvals</h4>
+                        <p className="text-xs text-slate-500">Manage all student, faculty, and administrator accounts, review registration requests, and handle account status lifecycle</p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setAdminView('approvals')}
+                        onClick={() => setAdminView('users')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
                       >
-                        <span>Open Approvals Queue</span>
+                        <span>Open User Hub</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
@@ -856,7 +862,7 @@ export default function App() {
 
                     <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-2 leading-relaxed">
                       <p>
-                        Review incoming student and lecturer registration requests. Authorize accounts to allow sign-in, or reject unverified applicants with a permanent rejection record.
+                        Comprehensive user administration: browse the full directory of active, suspended, pending, and rejected users across all roles, inspect account metadata, update account statuses with audit reasoning, and process applicant onboarding queues.
                       </p>
                     </div>
                   </section>

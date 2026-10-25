@@ -1,7 +1,9 @@
 package com.sahrin.spas.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sahrin.spas.config.SecurityConfig;
 import com.sahrin.spas.dto.UserResponse;
+import com.sahrin.spas.dto.UserStatusUpdateRequest;
 import com.sahrin.spas.entity.Role;
 import com.sahrin.spas.entity.User;
 import com.sahrin.spas.entity.User.UserStatus;
@@ -16,12 +18,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -34,6 +39,8 @@ class AdminControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @MockitoBean
     private AdminService adminService;
@@ -272,5 +279,91 @@ class AdminControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("Cannot reject user. Only accounts with PENDING_APPROVAL status can be rejected. Current status: REJECTED"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users should return 200 OK and list of all users")
+    void getAllUsers_admin_returns200() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        UserResponse u1 = new UserResponse(10L, "Student One", "STU-001", "s1@university.edu", Role.STUDENT, UserStatus.ACTIVE);
+        UserResponse u2 = new UserResponse(20L, "Lecturer One", "LEC-001", "l1@faculty.edu", Role.LECTURER, UserStatus.SUSPENDED);
+
+        when(adminService.getAllUsers(null, null, null)).thenReturn(List.of(u1, u2));
+
+        mockMvc.perform(get("/api/admin/users")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].fullName").value("Student One"))
+                .andExpect(jsonPath("$[1].status").value("SUSPENDED"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users as STUDENT should return 403 Forbidden")
+    void getAllUsers_student_returns403() throws Exception {
+        mockAuthenticatedUser(10L, "student@university.edu", Role.STUDENT);
+
+        mockMvc.perform(get("/api/admin/users")
+                        .header("Authorization", "Bearer valid.student.token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users/{id} should return 200 OK with user details")
+    void getUserById_admin_returns200() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        UserResponse u1 = new UserResponse(10L, "Student One", "STU-001", "s1@university.edu", Role.STUDENT, UserStatus.ACTIVE);
+        when(adminService.getUserById(10L)).thenReturn(u1);
+
+        mockMvc.perform(get("/api/admin/users/10")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.fullName").value("Student One"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/admin/users/{id}/status should update status and return 200 OK")
+    void updateUserStatus_admin_returns200() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        UserResponse updated = new UserResponse(
+                10L, "Student One", "STU-001", "s1@university.edu", Role.STUDENT, UserStatus.SUSPENDED,
+                "Account suspended successfully. Active sessions revoked."
+        );
+        when(adminService.updateUserStatus(eq(10L), any(UserStatusUpdateRequest.class), eq("admin@university.edu")))
+                .thenReturn(updated);
+
+        UserStatusUpdateRequest request = new UserStatusUpdateRequest(UserStatus.SUSPENDED, "Disciplinary suspension");
+
+        mockMvc.perform(put("/api/admin/users/10/status")
+                        .header("Authorization", "Bearer valid.admin.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.status").value("SUSPENDED"))
+                .andExpect(jsonPath("$.message").value("Account suspended successfully. Active sessions revoked."));
+    }
+
+    @Test
+    @DisplayName("PUT /api/admin/users/{id}/status with invalid transition returns 400 Bad Request")
+    void updateUserStatus_invalidTransition_returns400() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        when(adminService.updateUserStatus(eq(10L), any(UserStatusUpdateRequest.class), eq("admin@university.edu")))
+                .thenThrow(new InvalidStatusTransitionException("User is already in status ACTIVE."));
+
+        UserStatusUpdateRequest request = new UserStatusUpdateRequest(UserStatus.ACTIVE);
+
+        mockMvc.perform(put("/api/admin/users/10/status")
+                        .header("Authorization", "Bearer valid.admin.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("User is already in status ACTIVE."));
     }
 }

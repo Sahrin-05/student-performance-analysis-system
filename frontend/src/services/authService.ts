@@ -14,7 +14,7 @@ export interface RegisterResponseData {
   identifier: string;
   email: string;
   role: 'STUDENT' | 'LECTURER' | 'ADMIN';
-  status: 'PENDING_APPROVAL' | 'ACTIVE';
+  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
   message: string;
 }
 
@@ -31,7 +31,7 @@ export interface StatusCheckPayload {
 }
 
 export interface StatusCheckResponseData {
-  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED';
+  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
   message: string;
 }
 
@@ -82,7 +82,7 @@ export interface LoginResponseData {
   identifier: string;
   email: string;
   role: 'STUDENT' | 'LECTURER' | 'ADMIN';
-  status: 'PENDING_APPROVAL' | 'ACTIVE';
+  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
   message: string;
   token: string;
   tokenType?: string;

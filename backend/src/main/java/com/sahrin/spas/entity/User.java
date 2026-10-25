@@ -23,7 +23,8 @@ public class User {
     public enum UserStatus {
         ACTIVE,
         PENDING_APPROVAL,
-        REJECTED
+        REJECTED,
+        SUSPENDED
     }
 
     @Id

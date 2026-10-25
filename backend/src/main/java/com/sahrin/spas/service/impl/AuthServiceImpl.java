@@ -11,6 +11,7 @@ import com.sahrin.spas.entity.User;
 import com.sahrin.spas.entity.User.UserStatus;
 import com.sahrin.spas.exception.AccountPendingApprovalException;
 import com.sahrin.spas.exception.AccountStatusException;
+import com.sahrin.spas.exception.AccountSuspendedException;
 import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
@@ -133,6 +134,12 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw new AccountSuspendedException(
+                    "Your account has been administratively suspended. Please contact faculty administration for assistance."
+            );
+        }
+
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new AccountStatusException("Your account is not active. Please contact administrator.");
         }
@@ -187,6 +194,7 @@ public class AuthServiceImpl implements AuthService {
             case PENDING_APPROVAL -> "Your account request is currently pending administrator approval.";
             case ACTIVE -> "Your account has been approved and is active. You may now sign in.";
             case REJECTED -> "Your account registration request has been rejected. Please contact faculty administration for assistance.";
+            case SUSPENDED -> "Your account has been administratively suspended. Please contact faculty administration for assistance.";
         };
 
         return new StatusCheckResponse(user.getStatus(), message);

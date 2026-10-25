@@ -11,6 +11,7 @@ import com.sahrin.spas.entity.User;
 import com.sahrin.spas.entity.User.UserStatus;
 import com.sahrin.spas.exception.AccountPendingApprovalException;
 import com.sahrin.spas.exception.AccountStatusException;
+import com.sahrin.spas.exception.AccountSuspendedException;
 import com.sahrin.spas.exception.DuplicateResourceException;
 import com.sahrin.spas.exception.InvalidCredentialsException;
 import com.sahrin.spas.exception.InvalidRegistrationException;
@@ -361,6 +362,32 @@ class AuthServiceTest {
         );
 
         assertEquals("Your account request has been rejected by an administrator. Please contact faculty administration for assistance.", exception.getMessage());
+        verify(jwtService, never()).generateToken(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should throw AccountSuspendedException and not issue token when account status is SUSPENDED")
+    void login_suspendedStatus_throwsAccountSuspendedException() {
+        User suspendedUser = new User(
+                "Jane Doe",
+                "STU-2026-001",
+                "jane.doe@student.university.edu",
+                "$2a$10$encodedHash",
+                Role.STUDENT,
+                UserStatus.SUSPENDED
+        );
+
+        when(userRepository.findByEmail("jane.doe@student.university.edu")).thenReturn(Optional.of(suspendedUser));
+        when(passwordEncoder.matches("Password123!", "$2a$10$encodedHash")).thenReturn(true);
+
+        LoginRequest request = new LoginRequest("jane.doe@student.university.edu", "Password123!");
+
+        AccountSuspendedException exception = assertThrows(
+                AccountSuspendedException.class,
+                () -> authService.login(request)
+        );
+
+        assertEquals("Your account has been administratively suspended. Please contact faculty administration for assistance.", exception.getMessage());
         verify(jwtService, never()).generateToken(any(), any(), any());
     }
 

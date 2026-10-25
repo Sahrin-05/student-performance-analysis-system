@@ -407,6 +407,37 @@ export default function RequestStatusPage({
                     </div>
                   </div>
                 )}
+
+                {statusResult.status === 'SUSPENDED' && (
+                  <div className="rounded-xl border border-rose-300 bg-rose-50/90 p-4 text-xs text-rose-900 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-rose-200/80 pb-2">
+                      <span className="font-semibold text-rose-950 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-rose-500"></span>
+                        Account Status:
+                      </span>
+                      <span className="rounded-full bg-rose-200/90 px-2.5 py-0.5 text-[11px] font-bold text-rose-950 border border-rose-300">
+                        ACCOUNT SUSPENDED
+                      </span>
+                    </div>
+                    <div className="text-[12px] text-rose-900 leading-relaxed">
+                      <p>
+                        The account for <strong>{identifier}</strong> is currently administratively suspended.
+                      </p>
+                      <p className="mt-1 text-rose-800 text-[11px]">
+                        {statusResult.message}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-rose-200/60 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={handleResetInquiry}
+                        className="text-xs text-rose-800 hover:text-rose-950 underline underline-offset-2 font-medium"
+                      >
+                        Check another account
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
