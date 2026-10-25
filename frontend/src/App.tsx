@@ -13,6 +13,9 @@ import StudentAttendanceView from './StudentAttendanceView'
 import AdminRiskAlertsView from './AdminRiskAlertsView'
 import LecturerRiskAlertsView from './LecturerRiskAlertsView'
 import StudentRiskAlertsView from './StudentRiskAlertsView'
+import { AdminReportsAnalyticsView } from './AdminReportsAnalyticsView'
+import { LecturerReportsAnalyticsView } from './LecturerReportsAnalyticsView'
+import { StudentReportsAnalyticsView } from './StudentReportsAnalyticsView'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -23,9 +26,9 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
-  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic' | 'risk'>('overview')
-  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance' | 'risk'>('overview')
-  const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts'>('overview')
+  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'academic' | 'risk' | 'reports'>('overview')
+  const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance' | 'risk' | 'reports'>('overview')
+  const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts' | 'reports'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
 
@@ -365,6 +368,19 @@ export default function App() {
             setSidebarOpen(false)
           },
         },
+        {
+          name: 'Analytics & Reports',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          ),
+          active: adminView === 'reports',
+          onClick: () => {
+            setAdminView('reports')
+            setSidebarOpen(false)
+          },
+        },
       ]
     }
 
@@ -435,6 +451,19 @@ export default function App() {
             setSidebarOpen(false)
           },
         },
+        {
+          name: 'Class Reports',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          ),
+          active: lecturerView === 'reports',
+          onClick: () => {
+            setLecturerView('reports')
+            setSidebarOpen(false)
+          },
+        },
       ]
     }
 
@@ -502,6 +531,19 @@ export default function App() {
         active: studentView === 'alerts',
         onClick: () => {
           setStudentView('alerts')
+          setSidebarOpen(false)
+        },
+      },
+      {
+        name: 'Academic Transcript & Reports',
+        icon: (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        ),
+        active: studentView === 'reports',
+        onClick: () => {
+          setStudentView('reports')
           setSidebarOpen(false)
         },
       },
@@ -644,6 +686,8 @@ export default function App() {
                     ? 'Academic Structure & Curriculum Hub'
                     : adminView === 'risk'
                     ? 'Institutional Risk Alerts & Pastoral Care'
+                    : adminView === 'reports'
+                    ? 'Institutional Performance Reports & Analytics'
                     : 'Administrator Management Center'
                 )}
                 {currentUser.role === 'LECTURER' && (
@@ -655,6 +699,8 @@ export default function App() {
                     ? 'Faculty Attendance Register & Compliance'
                     : lecturerView === 'risk'
                     ? 'Student Academic Risk Alerts & Advising'
+                    : lecturerView === 'reports'
+                    ? 'Faculty Subject Performance & Attendance Dossier'
                     : 'Faculty Instruction & Grading Portal'
                 )}
                 {currentUser.role === 'STUDENT' && (
@@ -666,6 +712,8 @@ export default function App() {
                     ? 'Attendance Record & Exam Eligibility'
                     : studentView === 'alerts'
                     ? 'Academic Advising & Early Alerts'
+                    : studentView === 'reports'
+                    ? 'Student Academic Standing & Transcript Report'
                     : 'Student Academic Progress Portal'
                 )}
               </h2>
@@ -711,6 +759,8 @@ export default function App() {
                 <AdminAcademicHub onBackToOverview={() => setAdminView('overview')} />
               ) : adminView === 'risk' ? (
                 <AdminRiskAlertsView />
+              ) : adminView === 'reports' ? (
+                <AdminReportsAnalyticsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
@@ -727,7 +777,7 @@ export default function App() {
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">PostgreSQL Database</span>
                       <h4 className="text-lg font-bold text-slate-900 mt-1">Connected</h4>
@@ -744,6 +794,18 @@ export default function App() {
                       <span className="text-xs text-slate-500 font-medium">Approval Workflow</span>
                       <h4 className="text-lg font-bold text-slate-900 mt-1">Queue Ready</h4>
                       <p className="text-[11px] text-emerald-600 mt-1">● Live Backend API Connected</p>
+                    </div>
+
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-5 shadow-xs">
+                      <span className="text-xs text-indigo-700 font-medium">Executive Analytics</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Reports Hub</h4>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('reports')}
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 mt-1 underline cursor-pointer"
+                      >
+                        Institutional Reports →
+                      </button>
                     </div>
                   </div>
 
@@ -824,6 +886,32 @@ export default function App() {
                       </p>
                     </div>
                   </section>
+
+                  {/* Institutional Reports & Analytics Section */}
+                  <section className="rounded-xl border border-indigo-200 bg-white p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Institutional Performance Reports & Analytics</h4>
+                        <p className="text-xs text-slate-500">Departmental comparisons, grade distributions, attendance compliance brackets, and CSV exports</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('reports')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Reports & Analytics</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg bg-indigo-50/50 border border-indigo-200 p-4 text-xs text-indigo-900 space-y-2 leading-relaxed">
+                      <p>
+                        Generate institutional-wide intelligence with real-time academic KPIs, cross-department comparative summaries, attendance compliance monitoring, and CSV data extraction.
+                      </p>
+                    </div>
+                  </section>
                 </>
               )
             )}
@@ -838,6 +926,8 @@ export default function App() {
                 <LecturerAttendanceView />
               ) : lecturerView === 'risk' ? (
                 <LecturerRiskAlertsView />
+              ) : lecturerView === 'reports' ? (
+                <LecturerReportsAnalyticsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 shadow-xs">
@@ -854,7 +944,7 @@ export default function App() {
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">Assigned Courses</span>
                       <h4 className="text-lg font-bold text-slate-900 mt-1">Teaching Roster</h4>
@@ -902,6 +992,18 @@ export default function App() {
                         Inspect Flagged Students →
                       </button>
                     </div>
+
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-xs">
+                      <span className="text-xs text-indigo-700 font-medium">Faculty Dossiers</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Class Reports</h4>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('reports')}
+                        className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-800 mt-1 underline cursor-pointer"
+                      >
+                        Open Class Dossier →
+                      </button>
+                    </div>
                   </div>
 
                   <section className="rounded-xl border border-emerald-200 bg-white p-6 shadow-xs space-y-3">
@@ -941,6 +1043,25 @@ export default function App() {
                       </button>
                     </div>
                   </section>
+
+                  <section className="rounded-xl border border-indigo-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Faculty Subject Performance & Attendance Dossier</h4>
+                        <p className="text-xs text-slate-500">Analyze mark distributions, attendance compliance lists, at-risk rosters, and export subject CSV reports.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerView('reports')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Class Reports</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
                 </>
               )
             )}
@@ -955,6 +1076,8 @@ export default function App() {
                 <StudentAttendanceView />
               ) : studentView === 'alerts' ? (
                 <StudentRiskAlertsView />
+              ) : studentView === 'reports' ? (
+                <StudentReportsAnalyticsView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 sm:p-8 shadow-xs">
@@ -971,7 +1094,7 @@ export default function App() {
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                       <span className="text-xs text-slate-500 font-medium">Enrolled Subjects</span>
                       <h4 className="text-lg font-bold text-blue-600 mt-1">Course Curriculum</h4>
@@ -1019,6 +1142,18 @@ export default function App() {
                         Check Alerts & Advice →
                       </button>
                     </div>
+
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-xs">
+                      <span className="text-xs text-indigo-700 font-medium">Cumulative Record</span>
+                      <h4 className="text-lg font-bold text-slate-900 mt-1">Transcript</h4>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('reports')}
+                        className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-800 mt-1 underline cursor-pointer"
+                      >
+                        View Transcript Report →
+                      </button>
+                    </div>
                   </div>
 
                   <section className="rounded-xl border border-blue-200 bg-white p-6 shadow-xs space-y-3">
@@ -1052,6 +1187,25 @@ export default function App() {
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
                       >
                         <span>View Early Alerts</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border border-indigo-200 bg-white p-6 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">Academic Standing & Performance Transcript</h4>
+                        <p className="text-xs text-slate-500">View comprehensive subject-wise results, GPA, overall attendance statistics, and download your academic CSV report.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStudentView('reports')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <span>Open Transcript Report</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
