@@ -1,0 +1,24 @@
+# ===================================================================
+# Student Performance Analysis System (SPAS) - Root Git Ignore
+# ===================================================================
+
+# Environment variable files and credentials
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+local.properties
+*.local.properties
+application-local.properties
+
+# Operating System temporary and thumbnail files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Common editor and IDE workspaces
+.idea/
+.vscode/
+*.swp
+*.swo

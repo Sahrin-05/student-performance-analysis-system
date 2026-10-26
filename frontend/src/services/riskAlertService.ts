@@ -1,4 +1,5 @@
 import { authenticatedFetch, API_BASE_URL, type ApiErrorData } from './authService'
+import type { PageResponse } from './adminService'
 
 // ==========================================
 // RISK ALERTS ENUMS & TYPES
@@ -144,6 +145,31 @@ export async function fetchAdminAlerts(filters?: {
   const queryString = query.toString() ? `?${query.toString()}` : ''
   const res = await authenticatedFetch(`${API_BASE_URL}/admin/risk-alerts${queryString}`)
   return handleResponse<RiskAlert[]>(res, 'Failed to fetch institutional risk alerts.')
+}
+
+export async function fetchAdminAlertsPaged(
+  filters?: {
+    riskType?: AlertRiskType
+    severity?: AlertSeverity
+    status?: AlertStatus
+    subjectId?: number
+    studentId?: number
+  },
+  page = 0,
+  size = 10
+): Promise<PageResponse<RiskAlert>> {
+  const query = new URLSearchParams()
+  if (filters?.riskType) query.set('riskType', filters.riskType)
+  if (filters?.severity) query.set('severity', filters.severity)
+  if (filters?.status) query.set('status', filters.status)
+  if (filters?.subjectId) query.set('subjectId', String(filters.subjectId))
+  if (filters?.studentId) query.set('studentId', String(filters.studentId))
+  query.set('page', String(page))
+  query.set('size', String(size))
+
+  const queryString = `?${query.toString()}`
+  const res = await authenticatedFetch(`${API_BASE_URL}/admin/risk-alerts${queryString}`)
+  return handleResponse<PageResponse<RiskAlert>>(res, 'Failed to fetch paged risk alerts.')
 }
 
 export async function fetchAdminSummaryStats(): Promise<AlertSummaryStats> {

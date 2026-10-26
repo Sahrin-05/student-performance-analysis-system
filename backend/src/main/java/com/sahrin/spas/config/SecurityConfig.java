@@ -2,6 +2,7 @@ package com.sahrin.spas.config;
 
 import com.sahrin.spas.repository.UserRepository;
 import com.sahrin.spas.service.JwtService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,12 +19,21 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final String allowedOriginsStr;
+
+    public SecurityConfig(
+            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174}") String allowedOriginsStr
+    ) {
+        this.allowedOriginsStr = allowedOriginsStr;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -54,6 +64,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/academic/lecturer/**").hasRole("LECTURER")
@@ -69,7 +80,26 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+
+        List<String> origins = (allowedOriginsStr != null && !allowedOriginsStr.trim().isEmpty())
+                ? Arrays.stream(allowedOriginsStr.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList()
+                : List.of("http://localhost:5173", "http://localhost:5174");
+
+        if (origins.isEmpty()) {
+            origins = List.of("http://localhost:5173", "http://localhost:5174");
+        }
+
+        if (origins.contains("*")) {
+            throw new IllegalStateException(
+                    "CORS configuration error: Wildcard '*' is not permitted in CORS_ALLOWED_ORIGINS when allowCredentials is true. " +
+                    "Please configure explicit HTTPS origin URLs (e.g. 'https://spas.edu,http://localhost:5173') instead."
+            );
+        }
+
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

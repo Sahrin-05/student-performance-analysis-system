@@ -1,5 +1,6 @@
 package com.sahrin.spas.service.impl;
 
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.UserResponse;
 import com.sahrin.spas.dto.UserStatusUpdateRequest;
 import com.sahrin.spas.entity.Role;
@@ -8,7 +9,11 @@ import com.sahrin.spas.entity.User.UserStatus;
 import com.sahrin.spas.exception.InvalidStatusTransitionException;
 import com.sahrin.spas.exception.ResourceNotFoundException;
 import com.sahrin.spas.repository.UserRepository;
+import com.sahrin.spas.service.AdminAuditService;
 import com.sahrin.spas.service.AdminService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +23,16 @@ import java.util.List;
 public class AdminServiceImpl implements AdminService {
 
     private final UserRepository userRepository;
+    private final AdminAuditService adminAuditService;
+
+    @Autowired
+    public AdminServiceImpl(UserRepository userRepository, AdminAuditService adminAuditService) {
+        this.userRepository = userRepository;
+        this.adminAuditService = adminAuditService;
+    }
 
     public AdminServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
+        this(userRepository, null);
     }
 
     @Override
@@ -40,6 +52,16 @@ public class AdminServiceImpl implements AdminService {
         return users.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> getAllUsersPaged(Role role, UserStatus status, String search, int page, int size) {
+        String query = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        int p = Math.max(page, 0);
+        int s = (size > 0) ? Math.min(size, 100) : 10;
+        Page<User> users = userRepository.searchUsersPaged(role, status, query, PageRequest.of(p, s));
+        return PageResponse.from(users, this::toResponse);
     }
 
     @Override
@@ -106,6 +128,13 @@ public class AdminServiceImpl implements AdminService {
         targetUser.setStatus(newStatus);
         User savedUser = userRepository.save(targetUser);
 
+        if (adminAuditService != null) {
+            String details = "Updated account status of " + savedUser.getFullName() + " (" + savedUser.getEmail() + ") from "
+                    + currentStatus + " to " + newStatus
+                    + (request.getReason() != null && !request.getReason().trim().isEmpty() ? ". Reason: " + request.getReason().trim() : "");
+            adminAuditService.logAction("USER_STATUS_UPDATED", "USER", savedUser.getId(), savedUser.getIdentifier(), details, adminEmail);
+        }
+
         String message = switch (newStatus) {
             case ACTIVE -> currentStatus == UserStatus.SUSPENDED
                     ? "Account reactivated successfully. The user can now access the system."
@@ -123,6 +152,20 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public UserResponse approveUser(Long id) {
+        String adminEmail = null;
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                adminEmail = auth.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        return approveUser(id, adminEmail);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse approveUser(Long id, String adminEmail) {
         if (id == null) {
             throw new ResourceNotFoundException("User ID must not be null.");
         }
@@ -143,12 +186,31 @@ public class AdminServiceImpl implements AdminService {
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
 
+        if (adminAuditService != null) {
+            String details = "Approved " + savedUser.getRole() + " user account: " + savedUser.getFullName() + " (" + savedUser.getEmail() + ")";
+            adminAuditService.logAction("USER_APPROVED", "USER", savedUser.getId(), savedUser.getIdentifier(), details, adminEmail);
+        }
+
         return toResponse(savedUser, "User account approved successfully.");
     }
 
     @Override
     @Transactional
     public UserResponse rejectUser(Long id) {
+        String adminEmail = null;
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                adminEmail = auth.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        return rejectUser(id, adminEmail);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse rejectUser(Long id, String adminEmail) {
         if (id == null) {
             throw new ResourceNotFoundException("User ID must not be null.");
         }
@@ -168,6 +230,11 @@ public class AdminServiceImpl implements AdminService {
 
         user.setStatus(UserStatus.REJECTED);
         User savedUser = userRepository.save(user);
+
+        if (adminAuditService != null) {
+            String details = "Rejected " + savedUser.getRole() + " user account: " + savedUser.getFullName() + " (" + savedUser.getEmail() + ")";
+            adminAuditService.logAction("USER_REJECTED", "USER", savedUser.getId(), savedUser.getIdentifier(), details, adminEmail);
+        }
 
         return toResponse(savedUser, "User account rejected successfully.");
     }

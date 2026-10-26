@@ -1,5 +1,6 @@
 package com.sahrin.spas.service;
 
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.risk.AlertActionRequest;
 import com.sahrin.spas.dto.risk.AlertResolutionRequest;
 import com.sahrin.spas.dto.risk.AlertReviewRequest;
@@ -29,6 +30,10 @@ public interface RiskAlertService {
     // Admin retrieval
     List<RiskAlertResponse> getAllAlerts(AlertRiskType riskType, AlertSeverity severity,
                                          AlertStatus status, Long subjectId, Long studentId);
+
+    PageResponse<RiskAlertResponse> getAllAlertsPaged(AlertRiskType riskType, AlertSeverity severity,
+                                                      AlertStatus status, Long subjectId, Long studentId,
+                                                      int page, int size);
 
     AlertSummaryStatsResponse getAdminSummaryStats();
 

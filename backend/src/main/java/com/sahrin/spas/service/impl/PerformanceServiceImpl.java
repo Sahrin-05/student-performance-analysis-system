@@ -33,8 +33,10 @@ import com.sahrin.spas.repository.StudentMarkRepository;
 import com.sahrin.spas.repository.SubjectRepository;
 import com.sahrin.spas.repository.SubjectResultPublicationRepository;
 import com.sahrin.spas.repository.UserRepository;
+import com.sahrin.spas.service.AdminAuditService;
 import com.sahrin.spas.service.GradingPolicy;
 import com.sahrin.spas.service.PerformanceService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +61,30 @@ public class PerformanceServiceImpl implements PerformanceService {
     private final LecturerAssignmentRepository lecturerAssignmentRepository;
     private final UserRepository userRepository;
     private final GradingPolicy gradingPolicy;
+    private final AdminAuditService adminAuditService;
+
+    @Autowired
+    public PerformanceServiceImpl(AssessmentRepository assessmentRepository,
+                                  StudentMarkRepository studentMarkRepository,
+                                  SubjectResultPublicationRepository publicationRepository,
+                                  MarkAuditLogRepository auditLogRepository,
+                                  SubjectRepository subjectRepository,
+                                  EnrollmentRepository enrollmentRepository,
+                                  LecturerAssignmentRepository lecturerAssignmentRepository,
+                                  UserRepository userRepository,
+                                  GradingPolicy gradingPolicy,
+                                  AdminAuditService adminAuditService) {
+        this.assessmentRepository = assessmentRepository;
+        this.studentMarkRepository = studentMarkRepository;
+        this.publicationRepository = publicationRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.subjectRepository = subjectRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.lecturerAssignmentRepository = lecturerAssignmentRepository;
+        this.userRepository = userRepository;
+        this.gradingPolicy = gradingPolicy;
+        this.adminAuditService = adminAuditService;
+    }
 
     public PerformanceServiceImpl(AssessmentRepository assessmentRepository,
                                   StudentMarkRepository studentMarkRepository,
@@ -69,15 +95,9 @@ public class PerformanceServiceImpl implements PerformanceService {
                                   LecturerAssignmentRepository lecturerAssignmentRepository,
                                   UserRepository userRepository,
                                   GradingPolicy gradingPolicy) {
-        this.assessmentRepository = assessmentRepository;
-        this.studentMarkRepository = studentMarkRepository;
-        this.publicationRepository = publicationRepository;
-        this.auditLogRepository = auditLogRepository;
-        this.subjectRepository = subjectRepository;
-        this.enrollmentRepository = enrollmentRepository;
-        this.lecturerAssignmentRepository = lecturerAssignmentRepository;
-        this.userRepository = userRepository;
-        this.gradingPolicy = gradingPolicy;
+        this(assessmentRepository, studentMarkRepository, publicationRepository, auditLogRepository,
+                subjectRepository, enrollmentRepository, lecturerAssignmentRepository, userRepository,
+                gradingPolicy, null);
     }
 
     private User getAuthenticatedUser(String email) {
@@ -460,6 +480,13 @@ public class PerformanceServiceImpl implements PerformanceService {
         );
         auditLogRepository.save(auditLog);
 
+        if (adminAuditService != null) {
+            String details = "Administrative unlock for subject results: " + publication.getSubject().getCode()
+                    + " (" + academicYear + " " + semester + "). Reason: " + request.getReason().trim();
+            adminAuditService.logAction("ADMIN_UNLOCK", "SUBJECT_RESULT_PUBLICATION", saved.getId(),
+                    publication.getSubject().getCode(), details, adminEmail);
+        }
+
         return new SubjectResultPublicationResponse(saved);
     }
 
@@ -494,6 +521,13 @@ public class PerformanceServiceImpl implements PerformanceService {
                 admin
         );
         auditLogRepository.save(auditLog);
+
+        if (adminAuditService != null) {
+            String details = String.format("Administrative mark override for student %s on assessment %s: changed from %.2f to %.2f. Reason: %s",
+                    mark.getEnrollment().getStudent().getIdentifier(), assessment.getTitle(), oldScore, request.getNewScore(), request.getReason().trim());
+            adminAuditService.logAction("ADMIN_OVERRIDE", "STUDENT_MARK", saved.getId(),
+                    mark.getEnrollment().getStudent().getIdentifier(), details, adminEmail);
+        }
 
         return new StudentMarkResponse(saved);
     }

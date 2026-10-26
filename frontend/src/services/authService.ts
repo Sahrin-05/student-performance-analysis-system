@@ -35,7 +35,7 @@ export interface StatusCheckResponseData {
   message: string;
 }
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * Sends an account registration request to the Spring Boot backend.
@@ -166,6 +166,13 @@ export function getStoredAuthSession(): LoginResponseData | null {
     clearAuthSession();
     return null;
   }
+}
+
+/**
+ * Convenience helper to retrieve the JWT token from the active session.
+ */
+export function getAuthToken(): string | null {
+  return getStoredAuthSession()?.token ?? null;
 }
 
 /**

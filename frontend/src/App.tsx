@@ -16,6 +16,7 @@ import StudentRiskAlertsView from './StudentRiskAlertsView'
 import { AdminReportsAnalyticsView } from './AdminReportsAnalyticsView'
 import { LecturerReportsAnalyticsView } from './LecturerReportsAnalyticsView'
 import { StudentReportsAnalyticsView } from './StudentReportsAnalyticsView'
+import AdminAuditTrailView from './AdminAuditTrailView'
 import {
   getStoredAuthSession,
   clearAuthSession,
@@ -26,7 +27,7 @@ import {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
   const [currentUser, setCurrentUser] = useState<LoginResponseData | null>(() => getStoredAuthSession())
-  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'users' | 'academic' | 'risk' | 'reports'>('overview')
+  const [adminView, setAdminView] = useState<'overview' | 'approvals' | 'users' | 'academic' | 'risk' | 'reports' | 'audit'>('overview')
   const [lecturerView, setLecturerView] = useState<'overview' | 'subjects' | 'grading' | 'attendance' | 'risk' | 'reports'>('overview')
   const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts' | 'reports'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -347,15 +348,6 @@ export default function App() {
           },
         },
         {
-          name: 'System Audit Trail',
-          icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-          ),
-          active: false,
-        },
-        {
           name: 'Risk Alerts & Pastoral Care',
           icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -378,6 +370,19 @@ export default function App() {
           active: adminView === 'reports',
           onClick: () => {
             setAdminView('reports')
+            setSidebarOpen(false)
+          },
+        },
+        {
+          name: 'System Audit Trail',
+          icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ),
+          active: adminView === 'audit',
+          onClick: () => {
+            setAdminView('audit')
             setSidebarOpen(false)
           },
         },
@@ -688,6 +693,8 @@ export default function App() {
                     ? 'Institutional Risk Alerts & Pastoral Care'
                     : adminView === 'reports'
                     ? 'Institutional Performance Reports & Analytics'
+                    : adminView === 'audit'
+                    ? 'System Governance & Audit Trail Dossier'
                     : 'Administrator Management Center'
                 )}
                 {currentUser.role === 'LECTURER' && (
@@ -761,6 +768,8 @@ export default function App() {
                 <AdminRiskAlertsView />
               ) : adminView === 'reports' ? (
                 <AdminReportsAnalyticsView />
+              ) : adminView === 'audit' ? (
+                <AdminAuditTrailView />
               ) : (
                 <>
                   <section className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 sm:p-8 shadow-xs">
@@ -915,6 +924,32 @@ export default function App() {
                     <div className="rounded-lg bg-indigo-50/50 border border-indigo-200 p-4 text-xs text-indigo-900 space-y-2 leading-relaxed">
                       <p>
                         Generate institutional-wide intelligence with real-time academic KPIs, cross-department comparative summaries, attendance compliance monitoring, and CSV data extraction.
+                      </p>
+                    </div>
+                  </section>
+
+                  {/* System Audit Trail Section */}
+                  <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900">System Audit Trail & Governance</h4>
+                        <p className="text-xs text-slate-500">Immutable trace of administrative account approvals, status changes, risk resolutions, and mark overrides</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('audit')}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-900 transition-colors cursor-pointer"
+                      >
+                        <span>Open Audit Trail</span>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-xs text-slate-700 space-y-2 leading-relaxed">
+                      <p>
+                        Inspect chronological event history across user management, registration authorizations, subject result locks/unlocks, and pastoral risk interventions.
                       </p>
                     </div>
                   </section>

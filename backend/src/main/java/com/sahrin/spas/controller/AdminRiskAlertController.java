@@ -1,5 +1,6 @@
 package com.sahrin.spas.controller;
 
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.risk.AlertActionRequest;
 import com.sahrin.spas.dto.risk.AlertResolutionRequest;
 import com.sahrin.spas.dto.risk.AlertReviewRequest;
@@ -36,14 +37,31 @@ public class AdminRiskAlertController {
         this.riskAlertService = riskAlertService;
     }
 
+    public static final int DEFAULT_PAGE_SIZE = 10;
+    public static final int MAX_PAGE_SIZE = 100;
+
     @GetMapping
-    public ResponseEntity<List<RiskAlertResponse>> getAllAlerts(
+    public ResponseEntity<?> getAllAlerts(
             @RequestParam(name = "riskType", required = false) AlertRiskType riskType,
             @RequestParam(name = "severity", required = false) AlertSeverity severity,
             @RequestParam(name = "status", required = false) AlertStatus status,
             @RequestParam(name = "subjectId", required = false) Long subjectId,
-            @RequestParam(name = "studentId", required = false) Long studentId
+            @RequestParam(name = "studentId", required = false) Long studentId,
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size
     ) {
+        if (page != null || size != null) {
+            if (page != null && page < 0) {
+                throw new IllegalArgumentException("Page index must not be negative.");
+            }
+            if (size != null && size <= 0) {
+                throw new IllegalArgumentException("Page size must be greater than zero.");
+            }
+            int p = (page != null) ? page : 0;
+            int s = (size != null) ? Math.min(size, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
+            PageResponse<RiskAlertResponse> paged = riskAlertService.getAllAlertsPaged(riskType, severity, status, subjectId, studentId, p, s);
+            return ResponseEntity.ok(paged);
+        }
         List<RiskAlertResponse> alerts = riskAlertService.getAllAlerts(riskType, severity, status, subjectId, studentId);
         return ResponseEntity.ok(alerts);
     }

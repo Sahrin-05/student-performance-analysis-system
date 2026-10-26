@@ -2,6 +2,7 @@ package com.sahrin.spas.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sahrin.spas.config.SecurityConfig;
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.risk.AlertActionRequest;
 import com.sahrin.spas.dto.risk.AlertResolutionRequest;
 import com.sahrin.spas.dto.risk.AlertSummaryStatsResponse;
@@ -182,5 +183,52 @@ class RiskAlertControllerTest {
         mockMvc.perform(get("/api/admin/risk-alerts/summary")
                         .header("Authorization", "Bearer valid.lecturer.token"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ADMIN can get paged risk alerts via GET /api/admin/risk-alerts?page=0&size=500 and size is clamped to 100")
+    void testAdminGetAllAlertsPaged_clampsSize() throws Exception {
+        mockAuth(1L, "admin@spas.edu", Role.ADMIN);
+
+        RiskAlertResponse resp = new RiskAlertResponse();
+        resp.setId(10L);
+        resp.setRiskType(AlertRiskType.ATTENDANCE_WARNING);
+
+        PageResponse<RiskAlertResponse> pageResponse = new PageResponse<>(
+                List.of(resp), 0, 100, 1, 1, true, true
+        );
+
+        when(riskAlertService.getAllAlertsPaged(null, null, null, null, null, 0, 100))
+                .thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/admin/risk-alerts?page=0&size=500")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(10))
+                .andExpect(jsonPath("$.pageSize").value(100));
+    }
+
+    @Test
+    @DisplayName("ADMIN GET /api/admin/risk-alerts with negative page returns 400 Bad Request")
+    void testAdminGetAllAlertsNegativePage_returns400() throws Exception {
+        mockAuth(1L, "admin@spas.edu", Role.ADMIN);
+
+        mockMvc.perform(get("/api/admin/risk-alerts?page=-1&size=10")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative."));
+    }
+
+    @Test
+    @DisplayName("ADMIN GET /api/admin/risk-alerts with non-positive size returns 400 Bad Request")
+    void testAdminGetAllAlertsNonPositiveSize_returns400() throws Exception {
+        mockAuth(1L, "admin@spas.edu", Role.ADMIN);
+
+        mockMvc.perform(get("/api/admin/risk-alerts?page=0&size=0")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must be greater than zero."));
     }
 }

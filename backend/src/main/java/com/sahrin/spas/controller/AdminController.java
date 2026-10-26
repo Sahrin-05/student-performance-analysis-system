@@ -30,12 +30,28 @@ public class AdminController {
         this.adminService = adminService;
     }
 
+    public static final int DEFAULT_PAGE_SIZE = 10;
+    public static final int MAX_PAGE_SIZE = 100;
+
     @GetMapping("/users")
-    public ResponseEntity<List<UserResponse>> getAllUsers(
+    public ResponseEntity<?> getAllUsers(
             @RequestParam(name = "role", required = false) Role role,
             @RequestParam(name = "status", required = false) UserStatus status,
-            @RequestParam(name = "search", required = false) String search
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size
     ) {
+        if (page != null || size != null) {
+            if (page != null && page < 0) {
+                throw new IllegalArgumentException("Page index must not be negative.");
+            }
+            if (size != null && size <= 0) {
+                throw new IllegalArgumentException("Page size must be greater than zero.");
+            }
+            int p = (page != null) ? page : 0;
+            int s = (size != null) ? Math.min(size, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
+            return ResponseEntity.ok(adminService.getAllUsersPaged(role, status, search, p, s));
+        }
         List<UserResponse> users = adminService.getAllUsers(role, status, search);
         return ResponseEntity.ok(users);
     }

@@ -151,4 +151,14 @@ class SecurityConfigTest {
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("CORS initialization with wildcard '*' throws IllegalStateException when credentials are enabled")
+    void testCorsConfiguration_wildcardWithCredentials_throwsException() {
+        SecurityConfig config = new SecurityConfig("*");
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                config::corsConfigurationSource
+        );
+    }
 }

@@ -47,5 +47,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("search") String search
     );
 
+    @Query("SELECT u FROM User u WHERE " +
+           "(:role IS NULL OR u.role = :role) AND " +
+           "(:status IS NULL OR u.status = :status) AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           " LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           " LOWER(u.identifier) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           " LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY u.id ASC")
+    org.springframework.data.domain.Page<User> searchUsersPaged(
+            @Param("role") Role role,
+            @Param("status") User.UserStatus status,
+            @Param("search") String search,
+            org.springframework.data.domain.Pageable pageable
+    );
+
     Optional<User> findByIdentifierIgnoreCaseAndEmailIgnoreCase(String identifier, String email);
 }

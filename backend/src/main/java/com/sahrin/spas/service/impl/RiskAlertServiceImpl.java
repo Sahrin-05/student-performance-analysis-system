@@ -1,6 +1,7 @@
 package com.sahrin.spas.service.impl;
 
 import com.sahrin.spas.config.RiskAlertProperties;
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.risk.AlertActionRequest;
 import com.sahrin.spas.dto.risk.AlertResolutionRequest;
 import com.sahrin.spas.dto.risk.AlertReviewRequest;
@@ -32,7 +33,11 @@ import com.sahrin.spas.repository.RiskAlertRepository;
 import com.sahrin.spas.repository.StudentMarkRepository;
 import com.sahrin.spas.repository.SubjectRepository;
 import com.sahrin.spas.repository.UserRepository;
+import com.sahrin.spas.service.AdminAuditService;
 import com.sahrin.spas.service.RiskAlertService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +66,34 @@ public class RiskAlertServiceImpl implements RiskAlertService {
     private final AttendanceRecordRepository recordRepository;
     private final UserRepository userRepository;
     private final RiskAlertProperties riskProperties;
+    private final AdminAuditService adminAuditService;
+
+    @Autowired
+    public RiskAlertServiceImpl(
+            RiskAlertRepository riskAlertRepository,
+            SubjectRepository subjectRepository,
+            EnrollmentRepository enrollmentRepository,
+            LecturerAssignmentRepository lecturerAssignmentRepository,
+            AssessmentRepository assessmentRepository,
+            StudentMarkRepository studentMarkRepository,
+            AttendanceSessionRepository sessionRepository,
+            AttendanceRecordRepository recordRepository,
+            UserRepository userRepository,
+            RiskAlertProperties riskProperties,
+            AdminAuditService adminAuditService
+    ) {
+        this.riskAlertRepository = riskAlertRepository;
+        this.subjectRepository = subjectRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.lecturerAssignmentRepository = lecturerAssignmentRepository;
+        this.assessmentRepository = assessmentRepository;
+        this.studentMarkRepository = studentMarkRepository;
+        this.sessionRepository = sessionRepository;
+        this.recordRepository = recordRepository;
+        this.userRepository = userRepository;
+        this.riskProperties = riskProperties;
+        this.adminAuditService = adminAuditService;
+    }
 
     public RiskAlertServiceImpl(
             RiskAlertRepository riskAlertRepository,
@@ -74,16 +107,9 @@ public class RiskAlertServiceImpl implements RiskAlertService {
             UserRepository userRepository,
             RiskAlertProperties riskProperties
     ) {
-        this.riskAlertRepository = riskAlertRepository;
-        this.subjectRepository = subjectRepository;
-        this.enrollmentRepository = enrollmentRepository;
-        this.lecturerAssignmentRepository = lecturerAssignmentRepository;
-        this.assessmentRepository = assessmentRepository;
-        this.studentMarkRepository = studentMarkRepository;
-        this.sessionRepository = sessionRepository;
-        this.recordRepository = recordRepository;
-        this.userRepository = userRepository;
-        this.riskProperties = riskProperties;
+        this(riskAlertRepository, subjectRepository, enrollmentRepository, lecturerAssignmentRepository,
+                assessmentRepository, studentMarkRepository, sessionRepository, recordRepository,
+                userRepository, riskProperties, null);
     }
 
     private User getAuthenticatedUser(String email) {
@@ -416,6 +442,20 @@ public class RiskAlertServiceImpl implements RiskAlertService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResponse<RiskAlertResponse> getAllAlertsPaged(AlertRiskType riskType, AlertSeverity severity,
+                                                            AlertStatus status, Long subjectId, Long studentId,
+                                                            int page, int size) {
+        int pageNum = Math.max(page, 0);
+        int pageSize = (size > 0) ? Math.min(size, 100) : 10;
+
+        Page<RiskAlert> paged = riskAlertRepository.searchAlertsPaged(
+                riskType, severity, status, subjectId, studentId, PageRequest.of(pageNum, pageSize)
+        );
+        return PageResponse.from(paged, RiskAlertResponse::new);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AlertSummaryStatsResponse getAdminSummaryStats() {
         AlertSummaryStatsResponse stats = new AlertSummaryStatsResponse();
         stats.setTotalAlerts(riskAlertRepository.count());
@@ -557,6 +597,13 @@ public class RiskAlertServiceImpl implements RiskAlertService {
         alert.setReviewedAt(LocalDateTime.now());
 
         RiskAlert updated = riskAlertRepository.save(alert);
+
+        if (adminAuditService != null) {
+            String details = "Reviewed risk alert #" + updated.getId() + " (" + updated.getRiskType() + " - " + updated.getSeverity()
+                    + ") for student " + updated.getStudent().getIdentifier() + " in subject " + updated.getSubject().getCode();
+            adminAuditService.logAction("ALERT_REVIEWED", "RISK_ALERT", updated.getId(), "Alert #" + updated.getId(), details, reviewerEmail);
+        }
+
         return new RiskAlertResponse(updated);
     }
 
@@ -581,6 +628,13 @@ public class RiskAlertServiceImpl implements RiskAlertService {
         alert.setActionRecordedAt(LocalDateTime.now());
 
         RiskAlert updated = riskAlertRepository.save(alert);
+
+        if (adminAuditService != null) {
+            String details = "Recorded action on alert #" + updated.getId() + " for student "
+                    + updated.getStudent().getIdentifier() + ": " + request.getActionNotes().trim();
+            adminAuditService.logAction("ALERT_ACTION_TAKEN", "RISK_ALERT", updated.getId(), "Alert #" + updated.getId(), details, staffEmail);
+        }
+
         return new RiskAlertResponse(updated);
     }
 
@@ -600,6 +654,13 @@ public class RiskAlertServiceImpl implements RiskAlertService {
         alert.setResolvedAt(LocalDateTime.now());
 
         RiskAlert updated = riskAlertRepository.save(alert);
+
+        if (adminAuditService != null) {
+            String details = "Resolved risk alert #" + updated.getId() + " for student "
+                    + updated.getStudent().getIdentifier() + ": " + request.getResolutionNotes().trim();
+            adminAuditService.logAction("ALERT_RESOLVED", "RISK_ALERT", updated.getId(), "Alert #" + updated.getId(), details, staffEmail);
+        }
+
         return new RiskAlertResponse(updated);
     }
 }

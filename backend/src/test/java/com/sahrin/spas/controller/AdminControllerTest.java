@@ -2,6 +2,7 @@ package com.sahrin.spas.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sahrin.spas.config.SecurityConfig;
+import com.sahrin.spas.dto.PageResponse;
 import com.sahrin.spas.dto.UserResponse;
 import com.sahrin.spas.dto.UserStatusUpdateRequest;
 import com.sahrin.spas.entity.Role;
@@ -365,5 +366,47 @@ class AdminControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("User is already in status ACTIVE."));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users with page/size returns PageResponse and clamps size to 100")
+    void getAllUsers_paged_clampsSize() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        UserResponse user1 = new UserResponse(10L, "Student One", "STU-001", "s1@spas.edu", Role.STUDENT, UserStatus.ACTIVE);
+        PageResponse<UserResponse> pageResponse = new PageResponse<>(List.of(user1), 0, 100, 1, 1, true, true);
+
+        when(adminService.getAllUsersPaged(null, null, null, 0, 100))
+                .thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/admin/users?page=0&size=500")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(10))
+                .andExpect(jsonPath("$.pageSize").value(100));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users with negative page returns 400 Bad Request")
+    void getAllUsers_negativePage_returns400() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(get("/api/admin/users?page=-1&size=10")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative."));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users with non-positive size returns 400 Bad Request")
+    void getAllUsers_nonPositiveSize_returns400() throws Exception {
+        mockAuthenticatedUser(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(get("/api/admin/users?page=0&size=0")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must be greater than zero."));
     }
 }

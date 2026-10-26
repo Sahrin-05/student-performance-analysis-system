@@ -4,6 +4,8 @@ import com.sahrin.spas.entity.AlertRiskType;
 import com.sahrin.spas.entity.AlertSeverity;
 import com.sahrin.spas.entity.AlertStatus;
 import com.sahrin.spas.entity.RiskAlert;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,6 +35,24 @@ public interface RiskAlertRepository extends JpaRepository<RiskAlert, Long> {
 
     // System-wide queries
     List<RiskAlert> findAllByOrderByDetectedAtDesc();
+
+    @Query("""
+        SELECT r FROM RiskAlert r
+        WHERE (:riskType IS NULL OR r.riskType = :riskType)
+          AND (:severity IS NULL OR r.severity = :severity)
+          AND (:status IS NULL OR r.status = :status)
+          AND (:subjectId IS NULL OR r.subject.id = :subjectId)
+          AND (:studentId IS NULL OR r.student.id = :studentId)
+        ORDER BY r.detectedAt DESC
+    """)
+    Page<RiskAlert> searchAlertsPaged(
+            @Param("riskType") AlertRiskType riskType,
+            @Param("severity") AlertSeverity severity,
+            @Param("status") AlertStatus status,
+            @Param("subjectId") Long subjectId,
+            @Param("studentId") Long studentId,
+            Pageable pageable
+    );
 
     // Deduplication check: check if an active (non-RESOLVED) alert already exists
     boolean existsByStudentIdAndSubjectIdAndAcademicYearAndSemesterAndRiskTypeAndStatusNot(

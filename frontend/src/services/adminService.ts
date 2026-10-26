@@ -19,6 +19,37 @@ export interface UserFilterParams {
   search?: string;
 }
 
+export interface PageResponse<T> {
+  content: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface AdminAuditLog {
+  id: number;
+  action: string;
+  entityType: string;
+  entityId: number | null;
+  entityIdentifier: string | null;
+  details: string;
+  performedById: number | null;
+  performedByName: string | null;
+  performedByEmail: string;
+  performedAt: string;
+}
+
+export interface AuditLogFilterParams {
+  action?: string;
+  entityType?: string;
+  search?: string;
+  page?: number;
+  size?: number;
+}
+
 export interface PendingUser {
   id: number;
   fullName: string;
@@ -209,4 +240,72 @@ export async function updateUserStatus(
   }
 
   return data as UserAccount;
+}
+
+/**
+ * Fetches user accounts with server-side pagination.
+ * Requires ADMIN role.
+ */
+export async function fetchAllUsersPaged(
+  filters?: UserFilterParams,
+  page = 0,
+  size = 10
+): Promise<PageResponse<UserAccount>> {
+  const params = new URLSearchParams();
+  if (filters?.role) params.append('role', filters.role);
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.search && filters.search.trim()) params.append('search', filters.search.trim());
+  params.append('page', String(page));
+  params.append('size', String(size));
+
+  let response: Response;
+  try {
+    response = await authenticatedFetch(`${API_BASE_URL}/admin/users?${params.toString()}`);
+  } catch {
+    throw new Error('Unable to connect to the backend server.');
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorMsg = data?.message || 'Failed to retrieve paged user accounts.';
+    const error = new Error(errorMsg) as Error & ApiErrorData;
+    error.status = response.status;
+    throw error;
+  }
+
+  return data as PageResponse<UserAccount>;
+}
+
+/**
+ * Fetches system audit trail logs with filtering and server-side pagination.
+ * Requires ADMIN role.
+ */
+export async function fetchAuditLogs(
+  filters?: AuditLogFilterParams
+): Promise<PageResponse<AdminAuditLog>> {
+  const params = new URLSearchParams();
+  if (filters?.action) params.append('action', filters.action);
+  if (filters?.entityType) params.append('entityType', filters.entityType);
+  if (filters?.search && filters.search.trim()) params.append('search', filters.search.trim());
+  params.append('page', String(filters?.page ?? 0));
+  params.append('size', String(filters?.size ?? 15));
+
+  let response: Response;
+  try {
+    response = await authenticatedFetch(`${API_BASE_URL}/admin/audit-logs?${params.toString()}`);
+  } catch {
+    throw new Error('Unable to connect to the backend server.');
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorMsg = data?.message || 'Failed to retrieve system audit trail.';
+    const error = new Error(errorMsg) as Error & ApiErrorData;
+    error.status = response.status;
+    throw error;
+  }
+
+  return data as PageResponse<AdminAuditLog>;
 }
