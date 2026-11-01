@@ -60,7 +60,9 @@ export const AdminRiskAlertsView: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    loadData()
+    queueMicrotask(() => {
+      loadData()
+    })
   }, [loadData])
 
   const handleTriggerEvaluation = async (e: React.FormEvent) => {

@@ -54,4 +54,11 @@ public interface AcademicService {
 
     // Student portal operations
     List<EnrollmentResponse> getStudentEnrolments(String studentEmail);
+
+    // Safe deletion operations
+    void deleteDepartment(Long id);
+    void deleteCourse(Long id);
+    void deleteSubject(Long id);
+    void deleteAssignment(Long id);
+    void deleteEnrollment(Long id);
 }

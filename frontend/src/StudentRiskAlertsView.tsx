@@ -29,7 +29,9 @@ export const StudentRiskAlertsView: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    loadAlerts()
+    queueMicrotask(() => {
+      loadAlerts()
+    })
   }, [loadAlerts])
 
   const filteredAlerts = alerts.filter((a) => {

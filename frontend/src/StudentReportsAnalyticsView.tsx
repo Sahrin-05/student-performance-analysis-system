@@ -29,7 +29,9 @@ export function StudentReportsAnalyticsView() {
   }, [])
 
   useEffect(() => {
-    loadData()
+    queueMicrotask(() => {
+      loadData()
+    })
   }, [loadData])
 
   const handleExportCsv = async () => {

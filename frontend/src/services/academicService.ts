@@ -182,6 +182,16 @@ export async function setDepartmentStatus(id: number, active: boolean): Promise<
   return handleResponse<Department>(response, 'Failed to update department status.');
 }
 
+export async function deleteDepartment(id: number): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/admin/academic/departments/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete department.');
+  }
+}
+
 export async function fetchCourses(departmentId?: number, activeOnly?: boolean): Promise<Course[]> {
   const params = new URLSearchParams();
   if (departmentId) params.append('departmentId', departmentId.toString());
@@ -217,6 +227,16 @@ export async function setCourseStatus(id: number, active: boolean): Promise<Cour
     body: JSON.stringify({ active }),
   });
   return handleResponse<Course>(response, 'Failed to update course status.');
+}
+
+export async function deleteCourse(id: number): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/admin/academic/courses/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete course.');
+  }
 }
 
 export async function fetchSubjects(courseId?: number, departmentId?: number, activeOnly?: boolean): Promise<Subject[]> {
@@ -257,6 +277,16 @@ export async function setSubjectStatus(id: number, active: boolean): Promise<Sub
   return handleResponse<Subject>(response, 'Failed to update subject status.');
 }
 
+export async function deleteSubject(id: number): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/admin/academic/subjects/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete subject.');
+  }
+}
+
 export async function fetchAssignments(subjectId?: number, lecturerId?: number): Promise<LecturerAssignment[]> {
   const params = new URLSearchParams();
   if (subjectId) params.append('subjectId', subjectId.toString());
@@ -283,6 +313,16 @@ export async function setAssignmentStatus(id: number, active: boolean): Promise<
     body: JSON.stringify({ active }),
   });
   return handleResponse<LecturerAssignment>(response, 'Failed to update assignment status.');
+}
+
+export async function deleteAssignment(id: number): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/admin/academic/lecturer-assignments/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete assignment.');
+  }
 }
 
 export async function fetchEnrollments(courseId?: number, subjectId?: number, studentId?: number): Promise<Enrollment[]> {
@@ -312,6 +352,16 @@ export async function updateEnrollmentStatus(id: number, status: EnrollmentStatu
     body: JSON.stringify({ status }),
   });
   return handleResponse<Enrollment>(response, 'Failed to update enrolment status.');
+}
+
+export async function deleteEnrollment(id: number): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/admin/academic/enrolments/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete enrolment.');
+  }
 }
 
 export async function fetchActiveLecturers(): Promise<ActiveUserOption[]> {

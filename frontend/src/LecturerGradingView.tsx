@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   fetchLecturerMySubjects,
   type Subject,
@@ -6,10 +6,12 @@ import {
 import {
   fetchSubjectMarksRoster,
   createAssessment,
+  updateAssessment,
   deleteAssessment,
   enterOrUpdateMark,
   publishSubjectResults,
   type SubjectRosterMarks,
+  type Assessment,
   type AssessmentType,
 } from './services/performanceService'
 import type { ApiErrorData } from './services/authService'
@@ -34,6 +36,19 @@ export default function LecturerGradingView() {
   const [newType, setNewType] = useState<AssessmentType>('QUIZ')
   const [newMaxMarks, setNewMaxMarks] = useState('100')
   const [newWeight, setNewWeight] = useState('20')
+
+  // Assessment edit modal
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editType, setEditType] = useState<AssessmentType>('QUIZ')
+  const [editMaxMarks, setEditMaxMarks] = useState('100')
+  const [editWeight, setEditWeight] = useState('20')
+
+  // Student search & sorting
+  const [studentSearch, setStudentSearch] = useState('')
+  const [studentSortField, setStudentSortField] = useState<'identifier' | 'name' | 'total' | 'grade'>('identifier')
+  const [studentSortAsc, setStudentSortAsc] = useState(true)
 
   // Inline edit marks map: enrollmentId_assessmentId -> score string
   const [editingScores, setEditingScores] = useState<Record<string, string>>({})
@@ -87,7 +102,9 @@ export default function LecturerGradingView() {
 
   useEffect(() => {
     if (selectedSubject) {
-      loadRoster(selectedSubject.id, academicYear, semester)
+      queueMicrotask(() => {
+        loadRoster(selectedSubject.id, academicYear, semester)
+      })
     }
   }, [selectedSubject, academicYear, semester, loadRoster])
 
@@ -134,6 +151,98 @@ export default function LecturerGradingView() {
       setActionLoading(false)
     }
   }
+
+  const handleStartEditAssessment = (ass: Assessment) => {
+    setEditingAssessment(ass)
+    setEditTitle(ass.title)
+    setEditType(ass.type)
+    setEditMaxMarks(ass.maxMarks.toString())
+    setEditWeight(ass.weightPercentage.toString())
+    setShowEditModal(true)
+  }
+
+  const handleUpdateAssessment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedSubject || !editingAssessment) return
+
+    const max = parseFloat(editMaxMarks)
+    const weight = parseFloat(editWeight)
+
+    if (isNaN(max) || max <= 0) {
+      setError('Max marks must be greater than 0.')
+      return
+    }
+    if (isNaN(weight) || weight <= 0 || weight > 100) {
+      setError('Weight percentage must be between 0.01% and 100%.')
+      return
+    }
+
+    // Check total weight excluding this assessment
+    const otherWeights = (roster?.assessments || [])
+      .filter((a) => a.id !== editingAssessment.id)
+      .reduce((sum, a) => sum + a.weightPercentage, 0)
+
+    if (otherWeights + weight > 100) {
+      setError(`Total weight cannot exceed 100%. Other assessments sum to ${otherWeights.toFixed(1)}%, so maximum allowed weight here is ${(100 - otherWeights).toFixed(1)}%.`)
+      return
+    }
+
+    setActionLoading(true)
+    setError(null)
+    setSuccessMsg(null)
+
+    try {
+      await updateAssessment(editingAssessment.id, {
+        subjectId: selectedSubject.id,
+        academicYear,
+        semester,
+        title: editTitle.trim(),
+        type: editType,
+        maxMarks: max,
+        weightPercentage: weight,
+      })
+      setSuccessMsg(`Assessment "${editTitle}" updated successfully. Existing student marks preserved.`)
+      setShowEditModal(false)
+      setEditingAssessment(null)
+      await loadRoster(selectedSubject.id, academicYear, semester)
+    } catch (err: unknown) {
+      const apiErr = err as Error & ApiErrorData
+      setError(apiErr.message || 'Failed to update assessment.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleStudentSort = (field: 'identifier' | 'name' | 'total' | 'grade') => {
+    if (studentSortField === field) {
+      setStudentSortAsc(!studentSortAsc)
+    } else {
+      setStudentSortField(field)
+      setStudentSortAsc(true)
+    }
+  }
+
+  const filteredAndSortedStudents = useMemo(() => {
+    if (!roster?.students) return []
+    let list = roster.students.filter((s) => {
+      const term = studentSearch.toLowerCase().trim()
+      if (!term) return true
+      return (
+        s.studentIdentifier.toLowerCase().includes(term) ||
+        s.studentName.toLowerCase().includes(term) ||
+        s.studentEmail.toLowerCase().includes(term)
+      )
+    })
+    list = [...list].sort((a, b) => {
+      let cmp = 0
+      if (studentSortField === 'identifier') cmp = a.studentIdentifier.localeCompare(b.studentIdentifier)
+      else if (studentSortField === 'name') cmp = a.studentName.localeCompare(b.studentName)
+      else if (studentSortField === 'total') cmp = a.totalWeightedScore - b.totalWeightedScore
+      else if (studentSortField === 'grade') cmp = a.projectedGrade.localeCompare(b.projectedGrade)
+      return studentSortAsc ? cmp : -cmp
+    })
+    return list
+  }, [roster, studentSearch, studentSortField, studentSortAsc])
 
   const handleDeleteAssessment = async (assessmentId: number, title: string) => {
     if (!window.confirm(`Are you sure you want to delete assessment "${title}"? All entered student marks for it will be removed.`)) {
@@ -416,7 +525,14 @@ export default function LecturerGradingView() {
                             <td className="px-4 py-3 font-bold text-emerald-700">{ass.weightPercentage}%</td>
                             <td className="px-4 py-3 text-slate-500">{ass.creatorName}</td>
                             {!isPublished && (
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-4 py-3 text-right space-x-2">
+                                <button
+                                  onClick={() => handleStartEditAssessment(ass)}
+                                  disabled={actionLoading}
+                                  className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer"
+                                >
+                                  Edit
+                                </button>
                                 <button
                                   onClick={() => handleDeleteAssessment(ass.id, ass.title)}
                                   disabled={actionLoading}
@@ -437,12 +553,29 @@ export default function LecturerGradingView() {
               {/* Student Marks Matrix */}
               {roster && roster.assessments.length > 0 && (
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">Student Marks Matrix</h3>
                       <p className="text-[11px] text-slate-500">
                         Enter raw scores out of each assessment's maximum mark. Total weighted contribution and projected grade update automatically.
                       </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search student by ID or name..."
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          className="rounded-lg border border-slate-300 bg-slate-50/50 pl-7 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden"
+                        />
+                        <svg className="absolute left-2 top-2.5 h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {filteredAndSortedStudents.length} of {roster.students.length} students
+                      </span>
                     </div>
                   </div>
 
@@ -450,13 +583,21 @@ export default function LecturerGradingView() {
                     <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
                       No active student enrolments found for this subject and semester.
                     </div>
+                  ) : filteredAndSortedStudents.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+                      No students match search filter "{studentSearch}".
+                    </div>
                   ) : (
                     <div className="overflow-x-auto rounded-lg border border-slate-200">
                       <table className="w-full text-left text-xs text-slate-700">
-                        <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-600 border-b border-slate-200">
+                        <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-600 border-b border-slate-200 select-none">
                           <tr>
-                            <th className="px-4 py-3">Student ID</th>
-                            <th className="px-4 py-3">Name</th>
+                            <th onClick={() => handleStudentSort('identifier')} className="px-4 py-3 cursor-pointer hover:bg-slate-100">
+                              Student ID {studentSortField === 'identifier' ? (studentSortAsc ? '▲' : '▼') : '↕'}
+                            </th>
+                            <th onClick={() => handleStudentSort('name')} className="px-4 py-3 cursor-pointer hover:bg-slate-100">
+                              Name {studentSortField === 'name' ? (studentSortAsc ? '▲' : '▼') : '↕'}
+                            </th>
                             <th className="px-4 py-3">Status</th>
                             {roster.assessments.map((a) => (
                               <th key={a.id} className="px-3 py-3 text-center">
@@ -466,12 +607,16 @@ export default function LecturerGradingView() {
                                 </div>
                               </th>
                             ))}
-                            <th className="px-4 py-3 text-center">Weighted Total</th>
-                            <th className="px-4 py-3 text-center">Grade</th>
+                            <th onClick={() => handleStudentSort('total')} className="px-4 py-3 text-center cursor-pointer hover:bg-slate-100">
+                              Weighted Total {studentSortField === 'total' ? (studentSortAsc ? '▲' : '▼') : '↕'}
+                            </th>
+                            <th onClick={() => handleStudentSort('grade')} className="px-4 py-3 text-center cursor-pointer hover:bg-slate-100">
+                              Grade {studentSortField === 'grade' ? (studentSortAsc ? '▲' : '▼') : '↕'}
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {roster.students.map((studentRow) => {
+                          {filteredAndSortedStudents.map((studentRow) => {
                             const isDropped = studentRow.enrollmentStatus === 'DROPPED'
 
                             return (
@@ -653,6 +798,110 @@ export default function LecturerGradingView() {
                   className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {actionLoading ? 'Saving...' : 'Add Assessment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Assessment Modal */}
+      {showEditModal && editingAssessment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Edit Assessment</h3>
+                <p className="text-[11px] text-slate-500">Updating title, type, max marks or weight preserves student scores</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingAssessment(null)
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateAssessment} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Assessment Title</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. Midterm Examination, Quiz 1, Project Report"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Type</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as AssessmentType)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                  >
+                    <option value="QUIZ">Quiz</option>
+                    <option value="ASSIGNMENT">Assignment</option>
+                    <option value="MIDTERM">Midterm</option>
+                    <option value="FINAL_EXAM">Final Exam</option>
+                    <option value="PROJECT">Project</option>
+                    <option value="LAB">Lab</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Max Raw Marks</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    required
+                    value={editMaxMarks}
+                    onChange={(e) => setEditMaxMarks(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Weight Percentage (%) <span className="font-normal text-slate-400">Total cannot exceed 100%</span>
+                </label>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="100"
+                  step="0.5"
+                  required
+                  value={editWeight}
+                  onChange={(e) => setEditWeight(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingAssessment(null)
+                  }}
+                  className="rounded-lg border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {actionLoading ? 'Saving...' : 'Update Assessment'}
                 </button>
               </div>
             </form>

@@ -63,7 +63,9 @@ export function LecturerReportsAnalyticsView() {
 
   useEffect(() => {
     if (selectedSubject) {
-      loadReport()
+      queueMicrotask(() => {
+        loadReport()
+      })
     }
   }, [selectedSubject, loadReport])
 

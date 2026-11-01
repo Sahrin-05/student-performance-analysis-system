@@ -97,7 +97,9 @@ export const LecturerRiskAlertsView: React.FC = () => {
 
   useEffect(() => {
     if (selectedSubject || viewScope === 'ALL_MY_SUBJECTS') {
-      loadAlerts()
+      queueMicrotask(() => {
+        loadAlerts()
+      })
     }
   }, [loadAlerts, selectedSubject, viewScope])
 

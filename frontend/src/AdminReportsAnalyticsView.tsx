@@ -81,7 +81,9 @@ export function AdminReportsAnalyticsView() {
   }, [selectedDeptId, selectedCourseId, selectedSubjectId, academicYear, semester])
 
   useEffect(() => {
-    loadReport()
+    queueMicrotask(() => {
+      loadReport()
+    })
   }, [loadReport])
 
   const handleExport = async (type: 'summary' | 'departments' | 'subjects' | 'risk') => {

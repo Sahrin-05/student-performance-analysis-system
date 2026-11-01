@@ -21,6 +21,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -262,5 +263,39 @@ public class AdminAcademicController {
                 .map(u -> new UserResponse(u.getId(), u.getFullName(), u.getIdentifier(), u.getEmail(), u.getRole(), u.getStatus()))
                 .toList();
         return ResponseEntity.ok(responses);
+    }
+
+    // ==========================================
+    // SAFE DELETE OPERATIONS
+    // ==========================================
+
+    @DeleteMapping("/departments/{id}")
+    public ResponseEntity<Void> deleteDepartment(@PathVariable("id") Long id) {
+        academicService.deleteDepartment(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/courses/{id}")
+    public ResponseEntity<Void> deleteCourse(@PathVariable("id") Long id) {
+        academicService.deleteCourse(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/subjects/{id}")
+    public ResponseEntity<Void> deleteSubject(@PathVariable("id") Long id) {
+        academicService.deleteSubject(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/lecturer-assignments/{id}")
+    public ResponseEntity<Void> deleteAssignment(@PathVariable("id") Long id) {
+        academicService.deleteAssignment(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/enrolments/{id}")
+    public ResponseEntity<Void> deleteEnrollment(@PathVariable("id") Long id) {
+        academicService.deleteEnrollment(id);
+        return ResponseEntity.noContent().build();
     }
 }

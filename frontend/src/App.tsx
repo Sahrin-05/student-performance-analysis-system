@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import RequestStatusPage from './RequestStatusPage'
@@ -23,6 +23,13 @@ import {
   onUnauthorized,
   type LoginResponseData,
 } from './services/authService'
+import {
+  fetchActiveStudents,
+  fetchActiveLecturers,
+  fetchSubjects,
+} from './services/academicService'
+import { fetchPendingUsers } from './services/adminService'
+import { fetchAdminSummaryStats } from './services/riskAlertService'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'login' | 'register' | 'status'>('dashboard')
@@ -32,6 +39,55 @@ export default function App() {
   const [studentView, setStudentView] = useState<'overview' | 'enrolments' | 'results' | 'attendance' | 'alerts' | 'reports'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [statusPrefill, setStatusPrefill] = useState<{ identifier: string; email: string } | null>(null)
+
+  // Dynamic Admin Overview Metrics
+  const [adminMetrics, setAdminMetrics] = useState<{
+    totalStudents: number
+    totalLecturers: number
+    activeSubjects: number
+    pendingApprovals: number
+    openRiskAlerts: number
+    criticalAlerts: number
+    lastUpdated: string
+  } | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [metricsError, setMetricsError] = useState<string | null>(null)
+
+  const loadAdminMetrics = useCallback(async () => {
+    setMetricsLoading(true)
+    setMetricsError(null)
+    try {
+      const [students, lecturers, subs, pending, alertStats] = await Promise.all([
+        fetchActiveStudents().catch(() => []),
+        fetchActiveLecturers().catch(() => []),
+        fetchSubjects(undefined, undefined, true).catch(() => []),
+        fetchPendingUsers().catch(() => []),
+        fetchAdminSummaryStats().catch(() => null),
+      ])
+      setAdminMetrics({
+        totalStudents: students.length,
+        totalLecturers: lecturers.length,
+        activeSubjects: subs.length,
+        pendingApprovals: pending.length,
+        openRiskAlerts: alertStats?.activeAlerts ?? 0,
+        criticalAlerts: alertStats?.criticalAlerts ?? 0,
+        lastUpdated: new Date().toLocaleTimeString(),
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch live admin metrics.'
+      setMetricsError(msg)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN' && adminView === 'overview') {
+      queueMicrotask(() => {
+        loadAdminMetrics()
+      })
+    }
+  }, [currentUser?.role, adminView, loadAdminMetrics])
 
   // Listen for 401 Unauthorized events from authenticatedFetch
   useEffect(() => {
@@ -786,40 +842,172 @@ export default function App() {
                     </div>
                   </section>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">PostgreSQL Database</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Connected</h4>
-                      <p className="text-[11px] text-emerald-600 mt-1">● spas_db Active</p>
+                  {/* Live Database & Metrics Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-xl border border-indigo-100 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Live Institutional Pulse & Metrics</h4>
+                        <p className="text-[11px] text-slate-500">
+                          Real-time system counters synchronized with PostgreSQL
+                          {adminMetrics?.lastUpdated && ` • Updated at ${adminMetrics.lastUpdated}`}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={loadAdminMetrics}
+                      disabled={metricsLoading}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                    >
+                      <svg className={`h-3.5 w-3.5 ${metricsLoading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>{metricsLoading ? 'Refreshing...' : 'Refresh Metrics'}</span>
+                    </button>
+                  </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">Academic Foundation</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Active</h4>
-                      <p className="text-[11px] text-emerald-600 mt-1">● Curriculum Hub Ready</p>
+                  {/* Error banner if metrics failed */}
+                  {metricsError && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900 shadow-2xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">⚠</span>
+                        <span>{metricsError}</span>
+                      </div>
+                      <button onClick={loadAdminMetrics} className="font-semibold underline cursor-pointer">
+                        Retry
+                      </button>
                     </div>
+                  )}
 
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-                      <span className="text-xs text-slate-500 font-medium">User Management</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Directory & Approvals</h4>
+                  {/* 5 Dynamic Metric KPI Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {/* 1. Active Students */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-indigo-300 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-slate-500">Active Students</span>
+                          <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+                            Enrolled
+                          </span>
+                        </div>
+                        <div className="text-2xl font-extrabold text-slate-900">
+                          {metricsLoading && !adminMetrics ? '...' : adminMetrics?.totalStudents ?? 0}
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setAdminView('users')}
-                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-1 underline cursor-pointer"
+                        onClick={() => setAdminView('academic')}
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between cursor-pointer"
                       >
-                        Manage Accounts →
+                        <span>Enrolment Roster</span>
+                        <span>→</span>
                       </button>
                     </div>
 
-                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-5 shadow-xs">
-                      <span className="text-xs text-indigo-700 font-medium">Executive Analytics</span>
-                      <h4 className="text-lg font-bold text-slate-900 mt-1">Reports Hub</h4>
+                    {/* 2. Faculty Members */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-emerald-300 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-slate-500">Faculty Staff</span>
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                            Active
+                          </span>
+                        </div>
+                        <div className="text-2xl font-extrabold text-slate-900">
+                          {metricsLoading && !adminMetrics ? '...' : adminMetrics?.totalLecturers ?? 0}
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setAdminView('reports')}
-                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 mt-1 underline cursor-pointer"
+                        onClick={() => setAdminView('academic')}
+                        className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between cursor-pointer"
                       >
-                        Institutional Reports →
+                        <span>Teaching Assignments</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    {/* 3. Curriculum Subjects */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-blue-300 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-slate-500">Active Subjects</span>
+                          <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                            Curriculum
+                          </span>
+                        </div>
+                        <div className="text-2xl font-extrabold text-slate-900">
+                          {metricsLoading && !adminMetrics ? '...' : adminMetrics?.activeSubjects ?? 0}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('academic')}
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Subject Directory</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    {/* 4. Pending Approvals */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-slate-500">Pending Approvals</span>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            (adminMetrics?.pendingApprovals ?? 0) > 0
+                              ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {(adminMetrics?.pendingApprovals ?? 0) > 0 ? 'Action Needed' : 'All Clear'}
+                          </span>
+                        </div>
+                        <div className={`text-2xl font-extrabold ${(adminMetrics?.pendingApprovals ?? 0) > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                          {metricsLoading && !adminMetrics ? '...' : adminMetrics?.pendingApprovals ?? 0}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('users')}
+                        className="text-[11px] font-semibold text-amber-600 hover:text-amber-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Approvals Queue</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    {/* 5. Open Risk Alerts */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-rose-300 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-slate-500">Active Risk Alerts</span>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            (adminMetrics?.criticalAlerts ?? 0) > 0
+                              ? 'bg-rose-100 text-rose-800 border-rose-300'
+                              : 'bg-purple-100 text-purple-800 border-purple-200'
+                          }`}>
+                            {(adminMetrics?.criticalAlerts ?? 0) > 0
+                              ? `${adminMetrics?.criticalAlerts} Critical`
+                              : 'Pastoral Care'}
+                          </span>
+                        </div>
+                        <div className={`text-2xl font-extrabold ${(adminMetrics?.criticalAlerts ?? 0) > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                          {metricsLoading && !adminMetrics ? '...' : adminMetrics?.openRiskAlerts ?? 0}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdminView('risk')}
+                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between cursor-pointer"
+                      >
+                        <span>Investigate Alerts</span>
+                        <span>→</span>
                       </button>
                     </div>
                   </div>

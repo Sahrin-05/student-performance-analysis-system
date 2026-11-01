@@ -72,8 +72,10 @@ export default function AdminUserManagementView({ onBackToOverview }: AdminUserM
   }, [])
 
   useEffect(() => {
-    loadUsers()
-    loadPendingCount()
+    queueMicrotask(() => {
+      loadUsers()
+      loadPendingCount()
+    })
   }, [loadUsers, loadPendingCount])
 
   // Quick stats computed from current users or whole state

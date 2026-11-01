@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,6 +38,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -46,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = AdminAcademicController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@ActiveProfiles("test")
 class AdminAcademicControllerTest {
 
     @Autowired
@@ -303,5 +306,55 @@ class AdminAcademicControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.message").value("This lecturer is already assigned to this subject for 2025/2026 Semester 1."));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/academic/departments/{id} returns 204 No Content")
+    void deleteDepartment_success() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(delete("/api/admin/academic/departments/1")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/academic/courses/{id} returns 204 No Content")
+    void deleteCourse_success() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(delete("/api/admin/academic/courses/1")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/academic/subjects/{id} returns 204 No Content")
+    void deleteSubject_success() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(delete("/api/admin/academic/subjects/1")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/academic/lecturer-assignments/{id} returns 204 No Content")
+    void deleteAssignment_success() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(delete("/api/admin/academic/lecturer-assignments/1")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/academic/enrolments/{id} returns 204 No Content")
+    void deleteEnrollment_success() throws Exception {
+        mockAuth(1L, "admin@university.edu", Role.ADMIN);
+
+        mockMvc.perform(delete("/api/admin/academic/enrolments/1")
+                        .header("Authorization", "Bearer valid.admin.token"))
+                .andExpect(status().isNoContent());
     }
 }

@@ -449,4 +449,82 @@ class AcademicServiceTest {
         assertEquals(1, enrolments.size());
         assertEquals("CS101", enrolments.get(0).getSubjectCode());
     }
+
+    @Test
+    @DisplayName("Delete department succeeds when no courses exist")
+    void deleteDepartment_success() {
+        when(departmentRepository.findById(1L)).thenReturn(Optional.of(dept));
+        when(courseRepository.existsByDepartmentId(1L)).thenReturn(false);
+
+        academicService.deleteDepartment(1L);
+        verify(departmentRepository).delete(dept);
+    }
+
+    @Test
+    @DisplayName("Delete department throws IllegalStateException when courses exist")
+    void deleteDepartment_throwsWhenCoursesExist() {
+        when(departmentRepository.findById(1L)).thenReturn(Optional.of(dept));
+        when(courseRepository.existsByDepartmentId(1L)).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> academicService.deleteDepartment(1L));
+    }
+
+    @Test
+    @DisplayName("Delete course succeeds when no subjects exist")
+    void deleteCourse_success() {
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        when(subjectRepository.existsByCourseId(1L)).thenReturn(false);
+
+        academicService.deleteCourse(1L);
+        verify(courseRepository).delete(course);
+    }
+
+    @Test
+    @DisplayName("Delete course throws IllegalStateException when subjects exist")
+    void deleteCourse_throwsWhenSubjectsExist() {
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        when(subjectRepository.existsByCourseId(1L)).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> academicService.deleteCourse(1L));
+    }
+
+    @Test
+    @DisplayName("Delete subject succeeds when no enrolments or assignments exist")
+    void deleteSubject_success() {
+        when(subjectRepository.findById(1L)).thenReturn(Optional.of(subject));
+        when(enrollmentRepository.existsBySubjectId(1L)).thenReturn(false);
+        when(lecturerAssignmentRepository.existsBySubjectId(1L)).thenReturn(false);
+
+        academicService.deleteSubject(1L);
+        verify(subjectRepository).delete(subject);
+    }
+
+    @Test
+    @DisplayName("Delete subject throws IllegalStateException when enrolments exist")
+    void deleteSubject_throwsWhenEnrolmentsExist() {
+        when(subjectRepository.findById(1L)).thenReturn(Optional.of(subject));
+        when(enrollmentRepository.existsBySubjectId(1L)).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> academicService.deleteSubject(1L));
+    }
+
+    @Test
+    @DisplayName("Delete lecturer assignment succeeds")
+    void deleteAssignment_success() {
+        LecturerAssignment assignment = new LecturerAssignment(subject, lecturer, "2025/2026", "Semester 1");
+        when(lecturerAssignmentRepository.findById(1L)).thenReturn(Optional.of(assignment));
+
+        academicService.deleteAssignment(1L);
+        verify(lecturerAssignmentRepository).delete(assignment);
+    }
+
+    @Test
+    @DisplayName("Delete enrolment succeeds")
+    void deleteEnrollment_success() {
+        Enrollment enrollment = new Enrollment(student, course, subject, "2025/2026", "Semester 1");
+        when(enrollmentRepository.findById(1L)).thenReturn(Optional.of(enrollment));
+
+        academicService.deleteEnrollment(1L);
+        verify(enrollmentRepository).delete(enrollment);
+    }
 }

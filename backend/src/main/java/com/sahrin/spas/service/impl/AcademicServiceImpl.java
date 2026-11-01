@@ -684,4 +684,64 @@ public class AcademicServiceImpl implements AcademicService {
                 e.getEnrolledAt()
         );
     }
+
+    // ==========================================
+    // SAFE DELETION OPERATIONS
+    // ==========================================
+
+    @Override
+    @Transactional
+    public void deleteDepartment(Long id) {
+        Department dept = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department", "id", id));
+        if (courseRepository.existsByDepartmentId(id)) {
+            throw new IllegalStateException("Cannot delete department '" + dept.getName() +
+                    "' (" + dept.getCode() + ") because courses are associated with it. Please reassign or remove the courses first, or set this department to Inactive.");
+        }
+        departmentRepository.delete(dept);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourse(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
+        if (subjectRepository.existsByCourseId(id)) {
+            throw new IllegalStateException("Cannot delete course '" + course.getName() +
+                    "' (" + course.getCode() + ") because subjects are assigned to it. Please reassign or remove the subjects first, or set this course to Inactive.");
+        }
+        courseRepository.delete(course);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSubject(Long id) {
+        Subject subject = subjectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", id));
+        if (enrollmentRepository.existsBySubjectId(id)) {
+            throw new IllegalStateException("Cannot delete subject '" + subject.getName() +
+                    "' (" + subject.getCode() + ") because student enrolments exist for this subject. Set this subject to Inactive instead.");
+        }
+        if (lecturerAssignmentRepository.existsBySubjectId(id)) {
+            throw new IllegalStateException("Cannot delete subject '" + subject.getName() +
+                    "' (" + subject.getCode() + ") because lecturer assignments exist for this subject. Set this subject to Inactive instead.");
+        }
+        subjectRepository.delete(subject);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAssignment(Long id) {
+        LecturerAssignment assignment = lecturerAssignmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("LecturerAssignment", "id", id));
+        lecturerAssignmentRepository.delete(assignment);
+    }
+
+    @Override
+    @Transactional
+    public void deleteEnrollment(Long id) {
+        Enrollment enrollment = enrollmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment", "id", id));
+        enrollmentRepository.delete(enrollment);
+    }
 }

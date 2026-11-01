@@ -53,7 +53,9 @@ export default function AdminAuditTrailView() {
   }, [actionFilter, entityTypeFilter, debouncedSearch, page, pageSize]);
 
   useEffect(() => {
-    loadAuditLogs();
+    queueMicrotask(() => {
+      loadAuditLogs();
+    });
   }, [loadAuditLogs]);
 
   const handleActionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

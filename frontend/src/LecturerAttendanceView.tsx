@@ -6,6 +6,7 @@ import {
 import {
   fetchSubjectAttendanceSessions,
   createAttendanceSession,
+  updateAttendanceSession,
   deleteAttendanceSession,
   fetchSessionRoster,
   recordSessionAttendance,
@@ -36,6 +37,12 @@ export default function LecturerAttendanceView() {
   const [showAddSessionModal, setShowAddSessionModal] = useState(false)
   const [newSessionDate, setNewSessionDate] = useState(() => new Date().toISOString().split('T')[0])
   const [newSessionTopic, setNewSessionTopic] = useState('')
+
+  // Edit session modal
+  const [showEditSessionModal, setShowEditSessionModal] = useState(false)
+  const [editingSession, setEditingSession] = useState<AttendanceSession | null>(null)
+  const [editSessionDate, setEditSessionDate] = useState('')
+  const [editSessionTopic, setEditSessionTopic] = useState('')
 
   // Roster attendance edits map: enrollmentId -> { status, remarks }
   const [rosterEdits, setRosterEdits] = useState<Record<number, { status: AttendanceStatus; remarks: string }>>({})
@@ -84,8 +91,10 @@ export default function LecturerAttendanceView() {
 
   useEffect(() => {
     if (selectedSubject) {
-      loadSessionsAndSummary(selectedSubject.id, academicYear, semester)
-      queueMicrotask(() => setActiveSession(null))
+      queueMicrotask(() => {
+        loadSessionsAndSummary(selectedSubject.id, academicYear, semester)
+        setActiveSession(null)
+      })
     }
   }, [selectedSubject, academicYear, semester, loadSessionsAndSummary])
 
@@ -134,6 +143,41 @@ export default function LecturerAttendanceView() {
     } catch (err: unknown) {
       const apiErr = err as Error & ApiErrorData
       setError(apiErr.message || 'Failed to create attendance session.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleStartEditSession = (sess: AttendanceSession) => {
+    setEditingSession(sess)
+    setEditSessionDate(sess.sessionDate)
+    setEditSessionTopic(sess.sessionTopic)
+    setShowEditSessionModal(true)
+  }
+
+  const handleUpdateSession = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedSubject || !editingSession) return
+
+    setActionLoading(true)
+    setError(null)
+    setSuccessMsg(null)
+
+    try {
+      await updateAttendanceSession(editingSession.id, {
+        subjectId: selectedSubject.id,
+        sessionDate: editSessionDate,
+        sessionTopic: editSessionTopic.trim(),
+        academicYear,
+        semester,
+      })
+      setSuccessMsg(`Session "${editSessionTopic}" updated successfully. All attendance marks preserved.`)
+      setShowEditSessionModal(false)
+      setEditingSession(null)
+      await loadSessionsAndSummary(selectedSubject.id, academicYear, semester)
+    } catch (err: unknown) {
+      const apiErr = err as Error & ApiErrorData
+      setError(apiErr.message || 'Failed to update attendance session.')
     } finally {
       setActionLoading(false)
     }
@@ -324,15 +368,26 @@ export default function LecturerAttendanceView() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-900">{sess.sessionDate}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteSession(sess.id, sess.sessionTopic)
-                            }}
-                            className="text-[10px] text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleStartEditSession(sess)
+                              }}
+                              className="text-[10px] text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteSession(sess.id, sess.sessionTopic)
+                              }}
+                              className="text-[10px] text-rose-600 hover:text-rose-800 font-bold cursor-pointer hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                         <p className="font-medium text-xs text-slate-800 mt-1">{sess.sessionTopic}</p>
                         <p className="text-[10px] text-slate-400 mt-1">Recorded by: {sess.recordedByName}</p>
@@ -580,6 +635,74 @@ export default function LecturerAttendanceView() {
                   className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {actionLoading ? 'Creating...' : 'Create Session'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Session Modal */}
+      {showEditSessionModal && editingSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Edit Attendance Session</h3>
+                <p className="text-[11px] text-slate-500">Updating date or topic preserves all recorded attendance</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditSessionModal(false)
+                  setEditingSession(null)
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSession} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Session Date</label>
+                <input
+                  type="date"
+                  required
+                  value={editSessionDate}
+                  onChange={(e) => setEditSessionDate(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Session Topic / Lesson Focus</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Lecture 4: Object-Oriented Design Patterns"
+                  value={editSessionTopic}
+                  onChange={(e) => setEditSessionTopic(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 focus:border-emerald-600 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditSessionModal(false)
+                    setEditingSession(null)
+                  }}
+                  className="rounded-lg border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {actionLoading ? 'Saving...' : 'Update Session'}
                 </button>
               </div>
             </form>
